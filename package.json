@@ -1,7 +1,7 @@
 {
-  "name": "typing-indicator",
+  "name": "bappaswar",
   "version": "1.0.0",
-  "description": "",
+  "description": "॥ बाप्पा स्वर ॥ Bappaswar - Ganpati Bappa Devotional Music Web Application",
   "main": "index.js",
   "scripts": {
     "dev": "vite --port 5173 --host",
@@ -16,7 +16,6 @@
     "three": "^0.185.1"
   },
   "devDependencies": {
-    "@rolldown/binding-win32-x64-msvc": "^1.2.7",
     "vite": "^8.2.2"
   }
 }

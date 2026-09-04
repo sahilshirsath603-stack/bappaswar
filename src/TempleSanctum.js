@@ -278,7 +278,7 @@ export class TempleSanctum {
     });
   }
 
-  createSingleDiya(x, y, z, scale = 1.0) {
+  createSingleDiya(x, y, z, scale = 1.0, withLight = false) {
     const diyaGroup = new THREE.Group();
     diyaGroup.position.set(x, y, z);
     diyaGroup.scale.setScalar(scale);
@@ -302,11 +302,13 @@ export class TempleSanctum {
     flame.position.set(0.08, 0.22, 0);
     diyaGroup.add(flame);
 
-    const flameLight = new THREE.PointLight(0xffa200, 0.85, 4.5, 2.0);
-    flameLight.position.set(0.08, 0.3, 0);
-    diyaGroup.add(flameLight);
+    if (withLight) {
+      const flameLight = new THREE.PointLight(0xffa200, 0.85, 4.5, 2.0);
+      flameLight.position.set(0.08, 0.3, 0);
+      diyaGroup.add(flameLight);
+      this.diyaLights.push({ light: flameLight, baseIntensity: 0.85, offset: Math.random() * 10 });
+    }
 
-    this.diyaLights.push({ light: flameLight, baseIntensity: 0.85, offset: Math.random() * 10 });
     return diyaGroup;
   }
 
@@ -318,9 +320,15 @@ export class TempleSanctum {
       const angle = (i / diyaCount) * Math.PI * 2;
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
-      const diya = this.createSingleDiya(x, 0.12, z, 1.0);
+      const diya = this.createSingleDiya(x, 0.12, z, 1.0, false);
       this.group.add(diya);
     }
+
+    // Consolidated soft ambient altar glow
+    const ringLight = new THREE.PointLight(0xffa200, 1.2, 5.5, 2.0);
+    ringLight.position.set(0, 0.5, 0.5);
+    this.group.add(ringLight);
+    this.diyaLights.push({ light: ringLight, baseIntensity: 1.2, offset: 0 });
   }
 
   buildDeepaStambhas() {
@@ -366,7 +374,7 @@ export class TempleSanctum {
           const a = (i / t.count) * Math.PI * 2;
           const dx = Math.cos(a) * (t.radius - 0.08);
           const dz = Math.sin(a) * (t.radius - 0.08);
-          const diya = this.createSingleDiya(dx, t.y + 0.04, dz, 0.65);
+          const diya = this.createSingleDiya(dx, t.y + 0.04, dz, 0.65, false);
           stambha.add(diya);
         }
       });
@@ -376,8 +384,14 @@ export class TempleSanctum {
       finial.position.y = 2.85;
       stambha.add(finial);
 
-      const topDiya = this.createSingleDiya(0, 3.0, 0, 0.8);
+      const topDiya = this.createSingleDiya(0, 3.0, 0, 0.8, false);
       stambha.add(topDiya);
+
+      // Single warm cluster light per Deepa Stambha tower
+      const towerLight = new THREE.PointLight(0xff9a00, 1.3, 6.0, 1.8);
+      towerLight.position.set(pos.x, 1.8, pos.z);
+      this.group.add(towerLight);
+      this.diyaLights.push({ light: towerLight, baseIntensity: 1.3, offset: pos.x });
 
       this.group.add(stambha);
     });
@@ -431,13 +445,11 @@ export class TempleSanctum {
       const beamMesh = new THREE.Mesh(beamGeo, beamMat);
       barrel.add(beamMesh);
 
-      // High Intensity Dynamic Spotlight illuminating Ganesha
-      const spotLight = new THREE.SpotLight(0xffecd1, 4.0, 16.0, Math.PI * 0.28, 0.45, 1.2);
+      // Focused Stage Wash Light illuminating Ganesha (no heavy shadow maps to preserve mobile performance)
+      const spotLight = new THREE.SpotLight(0xffecd1, 3.2, 16.0, Math.PI * 0.28, 0.45, 1.2);
       spotLight.position.set(cfg.x, cfg.y + 0.35, cfg.z);
       spotLight.target.position.set(cfg.target.x, cfg.target.y, cfg.target.z);
-      spotLight.castShadow = true;
-      spotLight.shadow.mapSize.width = 1024;
-      spotLight.shadow.mapSize.height = 1024;
+      spotLight.castShadow = false;
 
       this.group.add(spotLight);
       this.group.add(spotLight.target);
@@ -484,8 +496,14 @@ export class TempleSanctum {
       }
 
       // Central Floating Diya
-      const floatDiya = this.createSingleDiya(0, 0.24, 0, 0.7);
+      const floatDiya = this.createSingleDiya(0, 0.24, 0, 0.7, false);
       urli.add(floatDiya);
+
+      // Soft bowl illumination
+      const urliLight = new THREE.PointLight(0xffaa00, 0.7, 3.5, 2.0);
+      urliLight.position.set(pos.x, 0.4, pos.z);
+      this.group.add(urliLight);
+      this.diyaLights.push({ light: urliLight, baseIntensity: 0.7, offset: pos.x });
 
       this.group.add(urli);
     });
@@ -500,9 +518,19 @@ export class TempleSanctum {
       const angle = Math.PI * 0.5 + t * (Math.PI * 0.65);
       const x = Math.cos(angle) * r;
       const z = Math.sin(angle) * r * 0.7 + 0.8;
-      const diya = this.createSingleDiya(x, 0.05, z, 0.75);
+      const diya = this.createSingleDiya(x, 0.05, z, 0.75, false);
       this.group.add(diya);
     }
+
+    const arcLightL = new THREE.PointLight(0xff9e00, 0.85, 4.5, 2.0);
+    arcLightL.position.set(-2.6, 0.35, 3.8);
+    this.group.add(arcLightL);
+    this.diyaLights.push({ light: arcLightL, baseIntensity: 0.85, offset: 1.5 });
+
+    const arcLightR = new THREE.PointLight(0xff9e00, 0.85, 4.5, 2.0);
+    arcLightR.position.set(2.6, 0.35, 3.8);
+    this.group.add(arcLightR);
+    this.diyaLights.push({ light: arcLightR, baseIntensity: 0.85, offset: 3.5 });
   }
 
   buildOfferings() {

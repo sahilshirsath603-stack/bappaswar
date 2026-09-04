@@ -39,18 +39,36 @@ class ExperienceApp {
   }
 
   initRenderer() {
+    this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+
     this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: !this.isMobile,
       powerPreference: 'high-performance',
-      preserveDrawingBuffer: true
+      preserveDrawingBuffer: false
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    // Cap device pixel ratio on mobile to prevent VRAM and fill-rate exhaustion
+    const maxDPR = this.isMobile ? 1.5 : 2.0;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxDPR));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.shadowMap.type = this.isMobile ? THREE.BasicShadowMap : THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.15;
     this.container.appendChild(this.renderer.domElement);
+
+    // Context loss handlers to prevent Android black screen/freeze
+    this.isContextLost = false;
+    this.renderer.domElement.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      console.warn('WebGL context lost. Pausing render.');
+      this.isContextLost = true;
+    }, false);
+
+    this.renderer.domElement.addEventListener('webglcontextrestored', () => {
+      console.warn('WebGL context restored. Reinitializing.');
+      this.isContextLost = false;
+    }, false);
   }
 
   initScene() {
@@ -95,8 +113,9 @@ class ExperienceApp {
     this.keyLight = new THREE.DirectionalLight(0xffecd1, 2.4);
     this.keyLight.position.set(3.5, 6.5, 5.0);
     this.keyLight.castShadow = true;
-    this.keyLight.shadow.mapSize.width = 2048;
-    this.keyLight.shadow.mapSize.height = 2048;
+    const shadowRes = this.isMobile ? 1024 : 2048;
+    this.keyLight.shadow.mapSize.width = shadowRes;
+    this.keyLight.shadow.mapSize.height = shadowRes;
     this.keyLight.shadow.camera.near = 1.0;
     this.keyLight.shadow.camera.far = 20.0;
     this.keyLight.shadow.bias = -0.0005;
@@ -771,35 +790,43 @@ class ExperienceApp {
     const progressBar = document.getElementById('progress-fill');
     const progressText = document.getElementById('progress-text');
 
-    if (!loader || !progressBar || !progressText) return;
+    if (!loader) return;
+
+    let isDismissed = false;
+    const dismissLoader = () => {
+      if (isDismissed) return;
+      isDismissed = true;
+      loader.classList.add('fade-out');
+      setTimeout(() => {
+        loader.style.display = 'none';
+      }, 700);
+    };
+
+    // Guaranteed failsafe: Never leave user stuck on loading screen longer than 2.8s
+    setTimeout(dismissLoader, 2800);
 
     let p = 0;
     const updateProgress = () => {
-      // Smooth organic progression across ~2 seconds
-      const increment = Math.floor(Math.random() * 3) + 2; // 2% to 4%
+      if (isDismissed) return;
+      const increment = Math.floor(Math.random() * 4) + 3;
       p = Math.min(100, p + increment);
 
-      progressBar.style.width = `${p}%`;
-      progressText.textContent = `${p}%`;
+      if (progressBar) progressBar.style.width = `${p}%`;
+      if (progressText) progressText.textContent = `${p}%`;
 
       if (p < 100) {
-        setTimeout(updateProgress, 55);
+        setTimeout(updateProgress, 35);
       } else {
-        // Peaceful transition when 100% ready
-        setTimeout(() => {
-          loader.classList.add('fade-out');
-          setTimeout(() => {
-            loader.style.display = 'none';
-          }, 900);
-        }, 350);
+        setTimeout(dismissLoader, 200);
       }
     };
 
-    setTimeout(updateProgress, 150);
+    setTimeout(updateProgress, 80);
   }
 
   animate() {
-    requestAnimationFrame(this.animate);
+    this.animFrameId = requestAnimationFrame(this.animate);
+    if (this.isContextLost) return;
 
     const now = performance.now();
     const delta = Math.min((now - this.lastTime) / 1000, 0.1);
@@ -819,6 +846,22 @@ class ExperienceApp {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  new ExperienceApp();
-});
+function initApp() {
+  try {
+    new ExperienceApp();
+  } catch (err) {
+    console.error('Failed to initialize ExperienceApp:', err);
+    // Dismiss loading screen so UI remains accessible even if WebGL fails
+    const loader = document.getElementById('loading-screen');
+    if (loader) {
+      loader.classList.add('fade-out');
+      setTimeout(() => { loader.style.display = 'none'; }, 500);
+    }
+  }
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}

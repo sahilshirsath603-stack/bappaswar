@@ -44,8 +44,14 @@ export class GaneshaImageModel {
     this.loader = new THREE.TextureLoader();
 
     this.initMaterials();
-    this.loadAllTextures();
+    this.loadInitialTexture();
     this.buildPortal();
+
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(() => this.preloadRemaining());
+    } else {
+      setTimeout(() => this.preloadRemaining(), 2500);
+    }
   }
 
   initMaterials() {
@@ -87,27 +93,45 @@ export class GaneshaImageModel {
     });
   }
 
-  loadAllTextures() {
-    MURTI_IMAGES.forEach((item, index) => {
-      this.loader.load(
-        item.src,
-        (tex) => {
-          tex.colorSpace = THREE.SRGBColorSpace;
-          tex.generateMipmaps = true;
-          tex.minFilter = THREE.LinearMipmapLinearFilter;
-          tex.magFilter = THREE.LinearFilter;
-          this.textures[index] = tex;
+  loadTexture(index, onComplete) {
+    if (this.textures[index]) {
+      if (onComplete) onComplete(this.textures[index]);
+      return;
+    }
+    const item = MURTI_IMAGES[index];
+    if (!item) return;
 
-          if (index === this.currentIndex) {
-            this.imageMaterial.map = tex;
-            this.imageMaterial.needsUpdate = true;
-          }
-        },
-        undefined,
-        (err) => {
-          console.warn('Could not load image texture:', item.src, err);
+    this.loader.load(
+      item.src,
+      (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.generateMipmaps = true;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        this.textures[index] = tex;
+
+        if (index === this.currentIndex) {
+          this.imageMaterial.map = tex;
+          this.imageMaterial.needsUpdate = true;
         }
-      );
+        if (onComplete) onComplete(tex);
+      },
+      undefined,
+      (err) => {
+        console.warn('Could not load murti texture:', item.src, err);
+      }
+    );
+  }
+
+  loadInitialTexture() {
+    this.loadTexture(this.currentIndex);
+  }
+
+  preloadRemaining() {
+    MURTI_IMAGES.forEach((_, idx) => {
+      if (idx !== this.currentIndex && !this.textures[idx]) {
+        setTimeout(() => this.loadTexture(idx), (idx + 1) * 800);
+      }
     });
   }
 
@@ -291,12 +315,7 @@ export class GaneshaImageModel {
       this.imageMaterial.map = this.textures[index];
       this.imageMaterial.needsUpdate = true;
     } else {
-      this.loader.load(MURTI_IMAGES[index].src, (tex) => {
-        tex.colorSpace = THREE.SRGBColorSpace;
-        this.textures[index] = tex;
-        this.imageMaterial.map = tex;
-        this.imageMaterial.needsUpdate = true;
-      });
+      this.loadTexture(index);
     }
   }
 

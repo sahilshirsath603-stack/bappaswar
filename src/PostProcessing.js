@@ -1,4 +1,4 @@
-// Serene, Soft Post-Processing Pipeline
+// Serene, Soft Post-Processing Pipeline with Safe Mobile Fallback
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -40,39 +40,75 @@ export class PostProcessingManager {
     this.renderer = renderer;
     this.scene = scene;
     this.camera = camera;
+    this.useDirectRender = false;
 
-    const size = new THREE.Vector2();
-    renderer.getSize(size);
+    // Detect mobile device to prevent WebGL context loss and OOM crashes
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
 
-    this.composer = new EffectComposer(renderer);
+    if (isMobile) {
+      // On mobile devices, direct WebGL render provides stable 60fps and zero crash risk
+      this.useDirectRender = true;
+      return;
+    }
 
-    const renderPass = new RenderPass(scene, camera);
-    this.composer.addPass(renderPass);
+    try {
+      const size = new THREE.Vector2();
+      renderer.getSize(size);
 
-    // Soft, dreamy bloom (calming and gentle)
-    this.bloomPass = new UnrealBloomPass(
-      new THREE.Vector2(size.x, size.y),
-      0.55, // strength
-      0.35, // radius
-      0.82  // threshold
-    );
-    this.composer.addPass(this.bloomPass);
+      this.composer = new EffectComposer(renderer);
 
-    this.vignettePass = new ShaderPass(CinematicVignetteShader);
-    this.vignettePass.renderToScreen = true;
-    this.composer.addPass(this.vignettePass);
+      const renderPass = new RenderPass(scene, camera);
+      this.composer.addPass(renderPass);
+
+      // Soft, dreamy bloom (calming and gentle)
+      this.bloomPass = new UnrealBloomPass(
+        new THREE.Vector2(size.x, size.y),
+        0.55, // strength
+        0.35, // radius
+        0.82  // threshold
+      );
+      this.composer.addPass(this.bloomPass);
+
+      this.vignettePass = new ShaderPass(CinematicVignetteShader);
+      this.vignettePass.renderToScreen = true;
+      this.composer.addPass(this.vignettePass);
+    } catch (err) {
+      console.warn('PostProcessing initialization failed, falling back to direct render:', err);
+      this.useDirectRender = true;
+    }
   }
 
   resize(width, height) {
-    this.composer.setSize(width, height);
-    this.bloomPass.setSize(width, height);
+    if (this.useDirectRender || !this.composer) return;
+    try {
+      this.composer.setSize(width, height);
+      if (this.bloomPass) {
+        this.bloomPass.setSize(width, height);
+      }
+    } catch (e) {
+      console.warn('PostProcessing resize failed:', e);
+      this.useDirectRender = true;
+    }
   }
 
   render(time) {
-    this.composer.render();
+    if (this.useDirectRender || !this.composer) {
+      this.renderer.render(this.scene, this.camera);
+      return;
+    }
+
+    try {
+      this.composer.render();
+    } catch (e) {
+      console.warn('PostProcessing render failed, falling back to direct render:', e);
+      this.useDirectRender = true;
+      this.renderer.render(this.scene, this.camera);
+    }
   }
 
   setBloomStrength(strength) {
-    this.bloomPass.strength = strength;
+    if (this.bloomPass) {
+      this.bloomPass.strength = strength;
+    }
   }
 }

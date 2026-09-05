@@ -1,11 +1,12 @@
 {
+  "id": "bappaswar-devotional-app",
   "name": "॥ बाप्पा स्वर ॥ Bappa Swar",
   "short_name": "Bappa Swar",
   "description": "Devotional Music & Darshan of Ganpati Bappa - Shlok, Aarti & Bhajans",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "background_color": "#140204",
   "theme_color": "#ff7518",
   "icons": [
@@ -13,13 +14,53 @@
       "src": "./images/bappa_theme_hero.png",
       "sizes": "192x192 512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "./images/bappa_theme_hero.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "./images/player_thumb.jpg",
       "sizes": "192x192",
-      "type": "image/jpeg"
+      "type": "image/jpeg",
+      "purpose": "any"
     }
   ],
-  "categories": ["music", "lifestyle"]
+  "categories": ["music", "lifestyle", "entertainment"],
+  "screenshots": [
+    {
+      "src": "./images/bappa_theme_hero.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Bappa Swar Devotional Sanctum"
+    },
+    {
+      "src": "./images/bappa_theme_hero.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Bappa Swar Mobile Darshan"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "श्लोक (Shlok)",
+      "url": "./index.html#shlok",
+      "description": "गणपती स्तोत्र व अथर्वशीर्ष"
+    },
+    {
+      "name": "आरती (Aarti)",
+      "url": "./index.html#aarti",
+      "description": "श्री महा आरती संग्रह"
+    },
+    {
+      "name": "भक्तिगीते (Bhajans)",
+      "url": "./index.html#songs",
+      "description": "अखंड भक्तिगीते"
+    }
+  ]
 }

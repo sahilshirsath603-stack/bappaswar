@@ -1,11 +1,11 @@
-// Bappa Swar Devotional App Service Worker for PWA Installability
-const CACHE_NAME = 'bappaswar-v1';
+// Bappa Swar Devotional App Service Worker
+const CACHE_NAME = 'bappaswar-v2';
 const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  './manifest.json',
-  './images/bappa_theme_hero.png',
-  './images/player_thumb.jpg'
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/images/bappa_theme_hero.png',
+  '/images/player_thumb.jpg'
 ];
 
 self.addEventListener('install', (event) => {
@@ -33,7 +33,7 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Let network handle audio streams & large tracks directly, fallback to cache for static shell
+  // Let network handle audio tracks directly
   if (event.request.destination === 'audio') {
     return;
   }
@@ -43,7 +43,7 @@ self.addEventListener('fetch', (event) => {
       if (cachedResponse) {
         return cachedResponse;
       }
-      return fetch(event.request).catch(() => caches.match('./index.html'));
+      return fetch(event.request).catch(() => caches.match('/index.html'));
     })
   );
 });

@@ -77,6 +77,12 @@
           <span class="brand-shloka">॥ वक्रतुण्ड महाकाय सूर्यकोटि समप्रभ ॥</span>
         </div>
       </div>
+      <div class="top-bar-actions">
+        <button class="top-nav-creator-link" id="nav-btn-creator" title="Meet the Creator" aria-label="Meet the Creator">
+          <span>🪔</span>
+          <span>Creator</span>
+        </button>
+      </div>
     </header>
 
     <!-- Floating Background Petals -->
@@ -370,6 +376,80 @@
         <p>🌸 <strong>पुष्प वृष्टी:</strong> बाप्पाच्या चरणी ताजी फुले अर्पण करा.</p>
         <p>🪔 <strong>दीप आरती:</strong> मंगल दीप प्रज्वलित करून आरती दर्शन घ्या.</p>
       </div>
+    </div>
+  </div>
+
+  <!-- Creator / Meet the Creator Modal (Plays continuous music without reload) -->
+  <div class="modal" id="creator-modal" aria-hidden="true">
+    <div class="modal-card creator-modal-card">
+      <button class="modal-close" id="close-creator-modal" aria-label="Close Creator Info">&times;</button>
+
+      <!-- Small Ganpati Devotional Visual -->
+      <div class="creator-hero-visual">
+        <div class="creator-halo-glow"></div>
+        <div class="creator-halo-ring"></div>
+        <div class="creator-image-frame">
+          <img src="./images/bappa_theme_hero.png" alt="॥ श्री गणेशाय नमः ॥" class="creator-ganpati-img">
+        </div>
+      </div>
+
+      <div class="creator-badge-row">
+        <span class="creator-badge">॥ ॐ गं गणपतये नमः ॥</span>
+      </div>
+
+      <h2 class="creator-heading">Meet the Creator</h2>
+
+      <div class="gold-ornament-divider" aria-hidden="true">
+        <span class="gold-divider-line"></span>
+        <span class="gold-divider-gem">✦</span>
+        <span class="gold-divider-line"></span>
+      </div>
+
+      <p class="creator-intro-text">
+        Bappa Swar is a devotional music project created to make Shlok, Aarti, and Bhajans easily accessible every day. This project combines devotion, creativity, and technology.
+      </p>
+
+      <!-- Personal Section Card -->
+      <section class="creator-personal-section">
+        <div class="personal-header">
+          <div class="personal-avatar">
+            <span class="avatar-om">🪔</span>
+          </div>
+          <div class="personal-meta">
+            <span class="creator-role">Creator & Developer • Bappa Swar</span>
+          </div>
+        </div>
+        <p class="creator-bio">
+          Crafted with love and devotion for all Ganpati Bappa devotees worldwide. Bringing tranquility, divine shlokas, and authentic temple vibrations straight to your daily life.
+        </p>
+
+        <!-- Instagram Button (Opens in new tab) -->
+        <div class="creator-social-links">
+          <a href="https://www.instagram.com/sahil.inthelab/" target="_blank" rel="noopener noreferrer" class="creator-btn btn-instagram" id="btn-creator-instagram-modal">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+              <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+              <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+            </svg>
+            <span>Instagram</span>
+          </a>
+        </div>
+      </section>
+
+      <!-- Return Home Navigation Button (Instant, smooth, zero music interruption) -->
+      <div class="creator-return-nav">
+        <button type="button" class="creator-home-cta" id="btn-creator-back-to-home">
+          <span class="cta-icon">🪔</span>
+          <span>Return to Sacred Darshan & Music</span>
+          <span class="cta-arrow">→</span>
+        </button>
+      </div>
+
+      <!-- Devotional Footer -->
+      <footer class="creator-footer">
+        <p class="footer-blessing">Made with devotion and technology 🪔</p>
+        <p class="footer-shloka">॥ श्री गणेशाय नमः ॥</p>
+      </footer>
     </div>
   </div>
 

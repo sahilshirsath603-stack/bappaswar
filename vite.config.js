@@ -35,6 +35,12 @@ export default defineConfig({
     }
   ],
   build: {
-    chunkSizeWarningLimit: 1200
+    chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        creator: path.resolve(__dirname, 'creator.html')
+      }
+    }
   }
 });

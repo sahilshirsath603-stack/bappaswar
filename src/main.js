@@ -758,6 +758,35 @@ class ExperienceApp {
         if (e.target === modalInfo) modalInfo.classList.remove('show');
       });
     }
+
+    // Creator Modal (Meet the Creator)
+    const btnCreator = document.getElementById('nav-btn-creator');
+    const modalCreator = document.getElementById('creator-modal');
+    const btnCloseCreator = document.getElementById('close-creator-modal');
+    const btnBackHomeCreator = document.getElementById('btn-creator-back-to-home');
+
+    const openCreatorModal = () => {
+      if (modalCreator) modalCreator.classList.add('show');
+    };
+
+    const closeCreatorModal = () => {
+      if (modalCreator) modalCreator.classList.remove('show');
+    };
+
+    if (btnCreator && modalCreator) {
+      btnCreator.addEventListener('click', openCreatorModal);
+    }
+    if (btnCloseCreator && modalCreator) {
+      btnCloseCreator.addEventListener('click', closeCreatorModal);
+    }
+    if (btnBackHomeCreator && modalCreator) {
+      btnBackHomeCreator.addEventListener('click', closeCreatorModal);
+    }
+    if (modalCreator) {
+      modalCreator.addEventListener('click', (e) => {
+        if (e.target === modalCreator) closeCreatorModal();
+      });
+    }
   }
 
   setTheme(themeName) {

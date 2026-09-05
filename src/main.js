@@ -36,6 +36,15 @@ class ExperienceApp {
     requestAnimationFrame(this.animate);
 
     this.completeLoading();
+    this.registerServiceWorker();
+  }
+
+  registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
   }
 
   initRenderer() {
@@ -765,26 +774,37 @@ class ExperienceApp {
     const btnCloseCreator = document.getElementById('close-creator-modal');
     const btnBackHomeCreator = document.getElementById('btn-creator-back-to-home');
 
-    const openCreatorModal = () => {
+    const openCreatorModal = (e) => {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
       if (modalCreator) modalCreator.classList.add('show');
     };
 
-    const closeCreatorModal = () => {
+    const closeCreatorModal = (e) => {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
       if (modalCreator) modalCreator.classList.remove('show');
     };
 
     if (btnCreator && modalCreator) {
       btnCreator.addEventListener('click', openCreatorModal);
+      btnCreator.addEventListener('touchend', openCreatorModal, { passive: false });
     }
     if (btnCloseCreator && modalCreator) {
       btnCloseCreator.addEventListener('click', closeCreatorModal);
+      btnCloseCreator.addEventListener('touchend', closeCreatorModal, { passive: false });
     }
     if (btnBackHomeCreator && modalCreator) {
       btnBackHomeCreator.addEventListener('click', closeCreatorModal);
+      btnBackHomeCreator.addEventListener('touchend', closeCreatorModal, { passive: false });
     }
     if (modalCreator) {
       modalCreator.addEventListener('click', (e) => {
-        if (e.target === modalCreator) closeCreatorModal();
+        if (e.target === modalCreator) closeCreatorModal(e);
       });
     }
   }

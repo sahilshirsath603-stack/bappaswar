@@ -30,6 +30,12 @@ export default defineConfig({
         console.log('Copying static audio and image assets to dist...');
         copyDir(path.resolve(__dirname, 'song'), path.resolve(__dirname, 'dist/song'));
         copyDir(path.resolve(__dirname, 'images'), path.resolve(__dirname, 'dist/images'));
+        if (fs.existsSync(path.resolve(__dirname, 'manifest.json'))) {
+          fs.copyFileSync(path.resolve(__dirname, 'manifest.json'), path.resolve(__dirname, 'dist/manifest.json'));
+        }
+        if (fs.existsSync(path.resolve(__dirname, 'sw.js'))) {
+          fs.copyFileSync(path.resolve(__dirname, 'sw.js'), path.resolve(__dirname, 'dist/sw.js'));
+        }
         console.log('Assets copied successfully to dist!');
       }
     }

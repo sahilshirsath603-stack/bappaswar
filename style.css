@@ -1007,6 +1007,30 @@ html, body {
   color: #ffd166;
 }
 
+.ctrl-btn.shuffle-btn {
+  padding: 7px;
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ctrl-btn.shuffle-btn.active {
+  color: #ffd166;
+  background: rgba(255, 183, 3, 0.16);
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  box-shadow: 0 0 10px rgba(255, 183, 3, 0.35);
+}
+
+.ctrl-btn.shuffle-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  width: 3px;
+  height: 3px;
+  background: #ffd166;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #ffb703;
+}
+
 .ctrl-btn.play-btn {
   width: 48px;
   height: 48px;
@@ -1892,7 +1916,7 @@ html, body {
   .player-center-controls {
     width: 100% !important;
     justify-content: center !important;
-    gap: 1.5rem !important;
+    gap: 1.1rem !important;
     margin-top: 0.1rem !important;
   }
 

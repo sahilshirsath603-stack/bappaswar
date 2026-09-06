@@ -18,12 +18,18 @@ export class DevotionalPlayer {
     // Web Audio Context for Devotional Soundscapes (Bells, Shankh, Chimes)
     this.ctx = null;
 
+    // Shuffle & loop states
+    this.isShuffle = true; // Auto-shuffle enabled by default for devotional songs!
+    this.isRepeat = false;
+    this.playedSongIndices = [];
+
     // Event listeners
     this.callbacks = {
       onTrackChange: [],
       onStateChange: [],
       onTimeUpdate: [],
-      onVolumeChange: []
+      onVolumeChange: [],
+      onShuffleChange: []
     };
 
     this.bindAudioEvents();
@@ -79,6 +85,27 @@ export class DevotionalPlayer {
       this.isPlaying = false;
       this.notifyStateChange();
     });
+  }
+
+  handleTrackEnded() {
+    console.log('[Bappa Swar] Track ended naturally. Advancing to next track. Current mode:', this.currentMode);
+    if (this.currentMode === 'songs') {
+      // In Songs mode, auto-play next song (shuffled or sequential) without stopping
+      this.nextSong(true);
+    } else if (this.currentMode === 'aarti') {
+      // In Aarti mode, advance to next Aarti in the collection
+      this.nextSong(true);
+    } else if (this.currentMode === 'shlok') {
+      if (this.isRepeat) {
+        this.seek(0);
+        this.play();
+      } else {
+        this.isPlaying = false;
+        this.notifyStateChange();
+      }
+    } else {
+      this.nextSong(true);
+    }
   }
 
   normalizeSrc(src) {
@@ -249,11 +276,37 @@ export class DevotionalPlayer {
       return;
     }
 
-    if (this.currentMode === 'songs') {
-      // ONLY cycle through other songs (bhaktigeete)
+    if (this.currentMode === 'songs' || !this.currentMode) {
       const total = MUSIC_CATALOG.songs.length;
       if (total === 0) return;
-      this.currentSongIndex = (this.currentSongIndex + 1) % total;
+
+      if (this.isShuffle && total > 1) {
+        // Track history to avoid repeating recent songs
+        if (this.playedSongIndices.length >= total) {
+          this.playedSongIndices = [];
+        }
+        if (!this.playedSongIndices.includes(this.currentSongIndex)) {
+          this.playedSongIndices.push(this.currentSongIndex);
+        }
+
+        let unplayed = [];
+        for (let i = 0; i < total; i++) {
+          if (!this.playedSongIndices.includes(i)) {
+            unplayed.push(i);
+          }
+        }
+        if (unplayed.length === 0) {
+          this.playedSongIndices = [this.currentSongIndex];
+          unplayed = Array.from({ length: total }, (_, i) => i).filter(i => i !== this.currentSongIndex);
+        }
+
+        const nextIdx = unplayed[Math.floor(Math.random() * unplayed.length)];
+        this.currentSongIndex = nextIdx;
+      } else {
+        this.currentSongIndex = (this.currentSongIndex + 1) % total;
+      }
+
+      this.currentMode = 'songs';
       const nextTrack = MUSIC_CATALOG.songs[this.currentSongIndex];
       this.loadAndPlay(nextTrack, autoplay);
       return;
@@ -276,15 +329,44 @@ export class DevotionalPlayer {
       return;
     }
 
-    if (this.currentMode === 'songs') {
-      // ONLY cycle through other songs (bhaktigeete)
+    if (this.currentMode === 'songs' || !this.currentMode) {
       const total = MUSIC_CATALOG.songs.length;
       if (total === 0) return;
-      this.currentSongIndex = (this.currentSongIndex - 1 + total) % total;
+
+      if (this.playedSongIndices.length > 0) {
+        this.currentSongIndex = this.playedSongIndices.pop();
+      } else {
+        this.currentSongIndex = (this.currentSongIndex - 1 + total) % total;
+      }
+
+      this.currentMode = 'songs';
       const prevTrack = MUSIC_CATALOG.songs[this.currentSongIndex];
       this.loadAndPlay(prevTrack, autoplay);
       return;
     }
+  }
+
+  toggleShuffle() {
+    this.isShuffle = !this.isShuffle;
+    this.callbacks.onShuffleChange.forEach(fn => fn(this.isShuffle));
+    return this.isShuffle;
+  }
+
+  onShuffleChange(fn) {
+    this.callbacks.onShuffleChange.push(fn);
+  }
+
+  toggleRepeat() {
+    this.isRepeat = !this.isRepeat;
+    if (this.callbacks.onRepeatChange) {
+      this.callbacks.onRepeatChange.forEach(fn => fn(this.isRepeat));
+    }
+    return this.isRepeat;
+  }
+
+  onRepeatChange(fn) {
+    if (!this.callbacks.onRepeatChange) this.callbacks.onRepeatChange = [];
+    this.callbacks.onRepeatChange.push(fn);
   }
 
   selectSongByIndex(index, autoplay = true) {

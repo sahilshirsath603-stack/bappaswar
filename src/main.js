@@ -345,6 +345,22 @@ class ExperienceApp {
       setTimeout(() => btnNext.classList.remove('pulse'), 400);
     });
 
+    const btnShuffle = document.getElementById('btn-shuffle');
+    if (btnShuffle) {
+      btnShuffle.addEventListener('click', () => {
+        const isShuffle = player.toggleShuffle();
+        btnShuffle.classList.toggle('active', isShuffle);
+        btnShuffle.title = isShuffle ? 'Shuffle Mode (Active)' : 'Shuffle Mode (Off)';
+        btnShuffle.classList.add('pulse');
+        setTimeout(() => btnShuffle.classList.remove('pulse'), 300);
+      });
+
+      player.onShuffleChange((isShuffle) => {
+        btnShuffle.classList.toggle('active', isShuffle);
+        btnShuffle.title = isShuffle ? 'Shuffle Mode (Active)' : 'Shuffle Mode (Off)';
+      });
+    }
+
     // --- Seeker Bar Click & Drag ---
     let isDraggingSeeker = false;
 
@@ -401,23 +417,20 @@ class ExperienceApp {
       player.toggleMute();
     });
 
-    // --- Shuffle & Repeat Buttons ---
-    const btnShuffle = document.getElementById('btn-shuffle');
-    if (btnShuffle) {
-      btnShuffle.addEventListener('click', () => {
-        btnShuffle.classList.toggle('active');
-        btnShuffle.classList.add('pulse');
-        setTimeout(() => btnShuffle.classList.remove('pulse'), 400);
-      });
-    }
-
+    // --- Repeat Button (if present) ---
     const btnRepeat = document.getElementById('btn-repeat');
     if (btnRepeat) {
       btnRepeat.addEventListener('click', () => {
-        btnRepeat.classList.toggle('active');
+        const isRepeat = player.toggleRepeat();
+        btnRepeat.classList.toggle('active', isRepeat);
         btnRepeat.classList.add('pulse');
         setTimeout(() => btnRepeat.classList.remove('pulse'), 400);
       });
+      if (player.onRepeatChange) {
+        player.onRepeatChange((isRepeat) => {
+          btnRepeat.classList.toggle('active', isRepeat);
+        });
+      }
     }
 
     // --- Top Bar Actions ---

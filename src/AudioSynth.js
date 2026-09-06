@@ -30,14 +30,18 @@ export class DevotionalPlayer {
   }
 
   initCtx() {
-    if (!this.ctx) {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (AudioCtx) {
-        this.ctx = new AudioCtx();
+    try {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          this.ctx = new AudioCtx();
+        }
       }
-    }
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume().catch(() => {});
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+    } catch (e) {
+      console.warn('Web Audio initialization error (non-fatal):', e);
     }
   }
 
@@ -71,37 +75,39 @@ export class DevotionalPlayer {
     });
 
     this.audio.addEventListener('error', (e) => {
-      console.warn('Audio playback error:', e);
+      console.warn('Audio playback error encountered:', e, 'Current src:', this.audio.src);
+      this.isPlaying = false;
+      this.notifyStateChange();
     });
   }
 
-  handleTrackEnded() {
-    if (this.currentMode === 'songs') {
-      // Advance smoothly to next devotional song in the other songs list ONLY
-      this.nextSong(true);
-    } else if (this.currentMode === 'aarti') {
-      // Advance to next Aarti in the Aarti collection ONLY (never mixing into other songs)
-      this.nextSong(true);
-    } else {
-      // For Shlok, stop peacefully
-      this.isPlaying = false;
-      this.notifyStateChange();
+  normalizeSrc(src) {
+    if (!src) return '';
+    // Ensure absolute root path /song/... so relative directory issues never occur
+    if (src.startsWith('./')) {
+      return '/' + src.slice(2);
     }
+    if (!src.startsWith('/') && !src.startsWith('http')) {
+      return '/' + src;
+    }
+    return src;
   }
 
   loadAndPlay(track, autoplay = true) {
     this.initCtx();
     if (!track || !track.src) return;
 
-    const isSameSrc = this.audio.src.endsWith(track.src.replace(/^\.\//, ''));
+    const resolvedSrc = this.normalizeSrc(track.src);
+    const isSameSrc = this.audio.src.endsWith(resolvedSrc.replace(/^\//, ''));
     this.currentTrack = track;
 
     if (!isSameSrc) {
-      this.audio.src = track.src;
+      this.audio.src = resolvedSrc;
       this.audio.load();
     }
 
     this.notifyTrackChange();
+    this.updateMediaSession();
 
     // Immediately notify UI of duration if known (e.g. Shlok 37:28)
     if (track.durationSeconds) {
@@ -116,7 +122,7 @@ export class DevotionalPlayer {
   play() {
     this.initCtx();
     if (!this.audio.src && this.currentTrack) {
-      this.audio.src = this.currentTrack.src;
+      this.audio.src = this.normalizeSrc(this.currentTrack.src);
     }
 
     if (!this.audio.src) {
@@ -130,11 +136,40 @@ export class DevotionalPlayer {
       promise.then(() => {
         this.isPlaying = true;
         this.notifyStateChange();
+        this.updateMediaSession();
       }).catch(err => {
-        console.warn('Autoplay prevented or interrupted:', err);
+        console.warn('Playback waiting for user gesture or interrupted:', err);
         this.isPlaying = false;
         this.notifyStateChange();
       });
+    }
+  }
+
+  updateMediaSession() {
+    if ('mediaSession' in navigator && this.currentTrack) {
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: this.currentTrack.title || '॥ बाप्पा स्वर ॥',
+          artist: this.currentTrack.artist || 'Devotional Chants',
+          album: '॥ बाप्पा स्वर ॥ Bappa Swar',
+          artwork: [
+            { src: '/images/bappa_theme_hero.png', sizes: '512x512', type: 'image/png' },
+            { src: '/images/player_thumb.jpg', sizes: '192x192', type: 'image/jpeg' }
+          ]
+        });
+
+        navigator.mediaSession.setActionHandler('play', () => this.play());
+        navigator.mediaSession.setActionHandler('pause', () => this.pause());
+        navigator.mediaSession.setActionHandler('previoustrack', () => this.prevSong(true));
+        navigator.mediaSession.setActionHandler('nexttrack', () => this.nextSong(true));
+        navigator.mediaSession.setActionHandler('seekto', (details) => {
+          if (details.seekTime !== undefined && this.audio.duration) {
+            this.audio.currentTime = details.seekTime;
+          }
+        });
+      } catch (e) {
+        // mediaSession non-critical
+      }
     }
   }
 
@@ -409,3 +444,16 @@ export class DevotionalPlayer {
 
 export const player = new DevotionalPlayer();
 export const audio = player; // backwards compatibility
+
+// Mobile browser user-gesture unlock
+if (typeof window !== 'undefined') {
+  const unlockAudioEngine = () => {
+    player.initCtx();
+    window.removeEventListener('pointerdown', unlockAudioEngine);
+    window.removeEventListener('touchstart', unlockAudioEngine);
+    window.removeEventListener('click', unlockAudioEngine);
+  };
+  window.addEventListener('pointerdown', unlockAudioEngine, { passive: true });
+  window.addEventListener('touchstart', unlockAudioEngine, { passive: true });
+  window.addEventListener('click', unlockAudioEngine, { passive: true });
+}

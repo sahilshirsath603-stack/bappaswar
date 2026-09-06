@@ -19,24 +19,38 @@ class ExperienceApp {
     this.raycaster = new THREE.Raycaster();
     this.currentTheme = 'gold'; // Warm devotional saffron & gold sanctuary
 
-    this.initRenderer();
-    this.initScene();
-    this.initCamera();
-    this.initLighting();
-    this.initWorld();
-    this.initPostProcessing();
-    this.initEvents();
+    // 1. Initialize all UI and audio systems FIRST so user can immediately play music
     this.initMusicPlayerUI();
     this.initOfferingsUI();
     this.initModals();
-
-    this.setTheme('gold');
-
-    this.animate = this.animate.bind(this);
-    requestAnimationFrame(this.animate);
-
     this.completeLoading();
     this.registerServiceWorker();
+
+    // 2. Only initialize Three.js if canvas container is actually visible
+    const isCanvasVisible = this.container && window.getComputedStyle(this.container).display !== 'none';
+    if (isCanvasVisible) {
+      this.init3D();
+    } else {
+      console.log('[Bappa Swar] Devotional Studio Sanctuary active (0% GPU load, maximum battery efficiency & zero crash).');
+    }
+  }
+
+  init3D() {
+    try {
+      this.initRenderer();
+      this.initScene();
+      this.initCamera();
+      this.initLighting();
+      this.initWorld();
+      this.initPostProcessing();
+      this.initEvents();
+      this.setTheme('gold');
+
+      this.animate = this.animate.bind(this);
+      requestAnimationFrame(this.animate);
+    } catch (err) {
+      console.warn('[Bappa Swar] 3D initialization bypassed:', err);
+    }
   }
 
   registerServiceWorker() {
@@ -294,13 +308,13 @@ class ExperienceApp {
     // --- Mode Buttons Click Handlers ---
     btnShlok.addEventListener('click', () => {
       player.selectMode('shlok', true);
-      this.particles.triggerFlowerShower();
+      if (this.particles) this.particles.triggerFlowerShower();
     });
 
     btnAarti.addEventListener('click', (e) => {
       if (e.target.closest('#btn-open-aarti-menu')) return;
       player.selectMode('aarti', true);
-      this.sanctum.toggleAarti();
+      if (this.sanctum) this.sanctum.toggleAarti();
       player.playShankh();
     });
 
@@ -560,7 +574,7 @@ class ExperienceApp {
 
       item.addEventListener('click', () => {
         player.selectAartiByIndex(idx, true);
-        this.sanctum.toggleAarti();
+        if (this.sanctum) this.sanctum.toggleAarti();
         player.playShankh();
         modalAarti.classList.remove('show');
       });
@@ -637,7 +651,7 @@ class ExperienceApp {
     const btnFlowers = document.getElementById('btn-flowers');
     if (btnFlowers) {
       btnFlowers.addEventListener('click', () => {
-        this.particles.triggerFlowerShower();
+        if (this.particles) this.particles.triggerFlowerShower();
         player.playFlowerChime();
         btnFlowers.classList.add('pulse');
         setTimeout(() => btnFlowers.classList.remove('pulse'), 500);
@@ -648,7 +662,7 @@ class ExperienceApp {
     const btnBell = document.getElementById('btn-bell');
     if (btnBell) {
       btnBell.addEventListener('click', () => {
-        this.sanctum.ringRandomBell();
+        if (this.sanctum) this.sanctum.ringRandomBell();
         player.playTempleBell();
         btnBell.classList.add('pulse');
         setTimeout(() => btnBell.classList.remove('pulse'), 500);
@@ -659,15 +673,17 @@ class ExperienceApp {
     const btnAartiMode = document.getElementById('btn-aarti-mode');
     if (btnAartiMode) {
       btnAartiMode.addEventListener('click', () => {
-        const active = this.sanctum.toggleAarti();
+        const active = this.sanctum ? this.sanctum.toggleAarti() : true;
         if (active) {
           btnAartiMode.classList.add('active');
-          this.controls.autoRotate = true;
-          this.controls.autoRotateSpeed = 0.7;
+          if (this.controls) {
+            this.controls.autoRotate = true;
+            this.controls.autoRotateSpeed = 0.7;
+          }
           player.playShankh();
         } else {
           btnAartiMode.classList.remove('active');
-          this.controls.autoRotate = false;
+          if (this.controls) this.controls.autoRotate = false;
         }
       });
     }
@@ -710,21 +726,22 @@ class ExperienceApp {
     if (murtiGrid) {
       murtiGrid.innerHTML = '';
       MURTI_IMAGES.forEach((murti, idx) => {
+        const isCurrent = this.ganesha ? idx === this.ganesha.currentIndex : idx === 0;
         const item = document.createElement('div');
-        item.className = `murti-item ${idx === this.ganesha.currentIndex ? 'active' : ''}`;
+        item.className = `murti-item ${isCurrent ? 'active' : ''}`;
         item.innerHTML = `
           <img src="${murti.src}" class="murti-thumb" alt="${murti.name}">
           <span class="murti-name">${murti.name}</span>
         `;
         item.addEventListener('click', () => {
-          this.ganesha.setMurtiIndex(idx);
+          if (this.ganesha) this.ganesha.setMurtiIndex(idx);
           document.querySelectorAll('.murti-item').forEach(el => el.classList.remove('active'));
           item.classList.add('active');
           if (subtitleElem) {
             subtitleElem.textContent = `${murti.name} • विघ्नहर्ता darshan`;
           }
           if (modalMurti) modalMurti.classList.remove('show');
-          this.particles.triggerFlowerShower();
+          if (this.particles) this.particles.triggerFlowerShower();
           player.playFlowerChime();
         });
         murtiGrid.appendChild(item);
@@ -811,27 +828,35 @@ class ExperienceApp {
 
   setTheme(themeName) {
     this.currentTheme = themeName;
-    this.ganesha.setTheme(themeName);
-    this.sanctum.setTheme(themeName);
+    if (this.ganesha) this.ganesha.setTheme(themeName);
+    if (this.sanctum) this.sanctum.setTheme(themeName);
     if (this.galaxy) this.galaxy.setTheme(themeName);
 
-    if (themeName === 'gold') {
+    if (themeName === 'gold' && this.scene) {
       this.scene.background.set(0x140204);
       this.scene.fog.color.set(0x140204);
-      this.ambientLight.color.set(0x3a1208);
-      this.rimLight.color.set(0xff9100);
-      this.keyLight.color.set(0xfff0d9);
+      if (this.ambientLight) this.ambientLight.color.set(0x3a1208);
+      if (this.rimLight) this.rimLight.color.set(0xff9100);
+      if (this.keyLight) this.keyLight.color.set(0xfff0d9);
     }
   }
 
   captureWallpaper() {
-    const time = (performance.now() - this.startTime) / 1000;
-    this.postProcessing.render(time);
-    const dataUrl = this.renderer.domElement.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.download = `Ganpati_Bappa_Darshan_${Date.now()}.png`;
-    link.href = dataUrl;
-    link.click();
+    if (this.renderer && this.postProcessing) {
+      const time = (performance.now() - this.startTime) / 1000;
+      this.postProcessing.render(time);
+      const dataUrl = this.renderer.domElement.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `Ganpati_Bappa_Darshan_${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+    } else {
+      const heroImg = document.getElementById('hero-bappa-img');
+      const link = document.createElement('a');
+      link.download = `Ganpati_Bappa_Darshan_${Date.now()}.png`;
+      link.href = heroImg ? heroImg.src : '/images/bappa_theme_hero.png';
+      link.click();
+    }
   }
 
   completeLoading() {
@@ -874,24 +899,29 @@ class ExperienceApp {
   }
 
   animate() {
+    if (!this.renderer || this.isContextLost) return;
     this.animFrameId = requestAnimationFrame(this.animate);
-    if (this.isContextLost) return;
 
-    const now = performance.now();
-    const delta = Math.min((now - this.lastTime) / 1000, 0.1);
-    const time = (now - this.startTime) / 1000;
-    this.lastTime = now;
+    try {
+      const now = performance.now();
+      const delta = Math.min((now - this.lastTime) / 1000, 0.1);
+      const time = (now - this.startTime) / 1000;
+      this.lastTime = now;
 
-    this.mouse.lerp(this.targetMouse, 0.05);
-    this.camera.position.x += (this.mouse.x * 0.35 - (this.camera.position.x - this.defaultCameraPos.x)) * 0.02;
+      if (this.controls) this.controls.update();
+      if (this.galaxy) this.galaxy.update(time, delta);
+      if (this.ganesha) this.ganesha.update(time, delta);
+      if (this.sanctum) this.sanctum.update(time, delta);
+      if (this.particles) this.particles.update(time, delta);
 
-    this.controls.update();
-    if (this.galaxy) this.galaxy.update(time, delta);
-    this.ganesha.update(time, delta);
-    this.sanctum.update(time, delta);
-    this.particles.update(time, delta);
-
-    this.postProcessing.render(time);
+      if (this.postProcessing) {
+        this.postProcessing.render(time);
+      } else if (this.scene && this.camera) {
+        this.renderer.render(this.scene, this.camera);
+      }
+    } catch (e) {
+      console.warn('Render loop handled safely:', e);
+    }
   }
 }
 

@@ -22,7 +22,7 @@ function copyDir(src, dest) {
 }
 
 export default defineConfig({
-  base: './',
+  base: '/',
   plugins: [
     {
       name: 'copy-devotional-assets',

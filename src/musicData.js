@@ -61,6 +61,16 @@ export const MUSIC_CATALOG = {
       durationSeconds: 82,
       src: encodeURI('./song/aarthi/' + "Karpur Gauram Karunavtaram_ \u00e0\u00a4_\u00e0\u00a4\u00a3\u00e0\u00a5_\u00e0\u00a4\u00b6 \u00e0\u00a4_\u00e0\u00a4\u00a4\u00e0\u00a5_\u00e0\u00a4\u00b8\u00e0\u00a4\u00b5 \u00e0\u00a4\u00b5\u00e0\u00a4\u00bf\u00e0\u00a4\u00b6\u00e0\u00a5_\u00e0\u00a4\u00b7 2025 Ganesh Maha Aarti _Dr. Balaji Tambe, Saam Gurukul.mp3"),
       category: 'आरती'
+    },
+    {
+      id: 'aarti-jai-ganesh',
+      title: 'जय गणेश जय गणेश देवा (Jai Ganesh Deva)',
+      subtitle: 'प्रसिद्ध गणेश महाआरती',
+      artist: 'Anuradha Paudwal',
+      duration: '04:36',
+      durationSeconds: 276,
+      src: encodeURI('./song/aarthi/' + "Ganesh Aarti, JAI GANESH DEVA by Anuradha Paudwal with Hindi, English LyricsI I Full Video Song.mp3"),
+      category: 'आरती'
     }
   ],
   songs: [

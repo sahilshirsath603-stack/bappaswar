@@ -1,13 +1,110 @@
 // Devotional Audio Engine & Music Player
 import { MUSIC_CATALOG } from './musicData.js';
 
+// Studio Sound Profiles (Spotify-Grade Mastering Presets)
+export const SOUND_PROFILES = {
+  'spotify-master': {
+    id: 'spotify-master',
+    name: 'Spotify Hi-Fi Master',
+    tagline: 'Deep punchy bass, pristine vocal clarity & silky air',
+    icon: '✨',
+    badge: 'STUDIO MASTER',
+    subBass: 3.8,
+    midBass: 3.4,
+    mudCut: -2.2,
+    presence: 3.6,
+    treble: 4.5,
+    bassBoost: 2.5,
+    warmth: 1.25,
+    width: 1.35,
+    compressor: { threshold: -20, knee: 24, ratio: 3.5, attack: 0.003, release: 0.22 }
+  },
+  'bass-boost': {
+    id: 'bass-boost',
+    name: 'Bass Boost (Dhol Tasha Punch)',
+    tagline: 'Powerful low-end thunder for festive devotional beats',
+    icon: '🥁',
+    badge: 'DHOL PUNCH',
+    subBass: 6.5,
+    midBass: 5.5,
+    mudCut: -1.0,
+    presence: 2.0,
+    treble: 2.5,
+    bassBoost: 6.0,
+    warmth: 1.45,
+    width: 1.20,
+    compressor: { threshold: -22, knee: 20, ratio: 4.0, attack: 0.004, release: 0.25 }
+  },
+  'vocal-clarity': {
+    id: 'vocal-clarity',
+    name: 'Devotional & Vocal Clarity',
+    tagline: 'Crisp, upfront vocals for Sukhkarta Aarti & Mantras',
+    icon: '🪔',
+    badge: 'PURE VOCALS',
+    subBass: -0.5,
+    midBass: 0.5,
+    mudCut: -3.0,
+    presence: 5.5,
+    treble: 4.8,
+    bassBoost: 0.0,
+    warmth: 1.0,
+    width: 1.20,
+    compressor: { threshold: -18, knee: 25, ratio: 2.8, attack: 0.002, release: 0.20 }
+  },
+  'sanctum-3d': {
+    id: 'sanctum-3d',
+    name: 'Spiritual Sanctum 3D',
+    tagline: 'Expansive spatial soundstage & majestic temple ambience',
+    icon: '🏛️',
+    badge: 'SPATIAL 3D',
+    subBass: 3.0,
+    midBass: 2.5,
+    mudCut: -1.8,
+    presence: 3.0,
+    treble: 4.0,
+    bassBoost: 2.0,
+    warmth: 1.2,
+    width: 1.80,
+    compressor: { threshold: -19, knee: 26, ratio: 3.2, attack: 0.004, release: 0.30 }
+  },
+  'original': {
+    id: 'original',
+    name: 'Original (Flat / Bypass)',
+    tagline: 'Raw unenhanced audio for direct A/B comparison',
+    icon: '🔈',
+    badge: 'FLAT RAW',
+    subBass: 0,
+    midBass: 0,
+    mudCut: 0,
+    presence: 0,
+    treble: 0,
+    bassBoost: 0,
+    warmth: 1.0,
+    width: 1.0,
+    compressor: { threshold: 0, knee: 40, ratio: 1.0, attack: 0.01, release: 0.25 }
+  }
+};
+
+function createWarmthCurve(amount = 1.2) {
+  const n = 512;
+  const curve = new Float32Array(n);
+  for (let i = 0; i < n; ++i) {
+    const x = (i * 2) / n - 1;
+    curve[i] = Math.tanh(x * amount) / Math.tanh(amount);
+  }
+  return curve;
+}
+
 export class DevotionalPlayer {
   constructor() {
     this.audio = new Audio();
     this.audio.preload = 'metadata';
+    this.audio.crossOrigin = 'anonymous';
 
     this.currentMode = null; // 'shlok' | 'aarti' | 'songs'
-    this.currentSongIndex = 0;
+    // Auto-randomize Bhakti song index so every time app and web open, a fresh random song is ready
+    const totalSongs = (MUSIC_CATALOG.songs && MUSIC_CATALOG.songs.length) || 1;
+    this.currentSongIndex = Math.floor(Math.random() * totalSongs);
     this.currentAartiIndex = 0;
     this.currentTrack = null;
     this.isPlaying = false;
@@ -15,8 +112,47 @@ export class DevotionalPlayer {
     this.volume = 0.85;
     this.audio.volume = this.volume;
 
-    // Web Audio Context for Devotional Soundscapes (Bells, Shankh, Chimes)
+    // Web Audio Context for Devotional Soundscapes & Studio DSP Chain
     this.ctx = null;
+    this.dspInitialized = false;
+
+    // DSP Nodes
+    this.mediaSourceNode = null;
+    this.preampGain = null;
+    this.subBassFilter = null;
+    this.midBassFilter = null;
+    this.mudCutFilter = null;
+    this.presenceFilter = null;
+    this.trebleFilter = null;
+    this.bassBooster = null;
+    this.warmthNode = null;
+    this.sideGain = null;
+    this.compressorNode = null;
+    this.analyser = null;
+    this.frequencyDataArray = null;
+    this.masterGainNode = null;
+
+    // Hi-Fi Enhancer Settings (Persisted in LocalStorage)
+    let savedProfile = 'spotify-master';
+    let savedEnhancer = true;
+    let savedBass = 0;
+    let savedTreble = 0;
+    try {
+      const p = localStorage.getItem('bappa_audio_profile');
+      if (p && SOUND_PROFILES[p]) savedProfile = p;
+      const e = localStorage.getItem('bappa_audio_enhancer');
+      if (e !== null) savedEnhancer = e === 'true';
+      const b = parseFloat(localStorage.getItem('bappa_audio_bass'));
+      if (!isNaN(b)) savedBass = b;
+      const t = parseFloat(localStorage.getItem('bappa_audio_treble'));
+      if (!isNaN(t)) savedTreble = t;
+    } catch (err) {}
+
+    this.isEnhancerActive = savedEnhancer;
+    this.currentProfile = savedProfile;
+    this.userBassOffset = savedBass;
+    this.userTrebleOffset = savedTreble;
+    this.userWidth = 1.0;
 
     // Shuffle & loop states
     this.isShuffle = true; // Auto-shuffle enabled by default for devotional songs!
@@ -29,7 +165,9 @@ export class DevotionalPlayer {
       onStateChange: [],
       onTimeUpdate: [],
       onVolumeChange: [],
-      onShuffleChange: []
+      onShuffleChange: [],
+      onEnhancerChange: [],
+      onProfileChange: []
     };
 
     this.bindAudioEvents();
@@ -46,9 +184,201 @@ export class DevotionalPlayer {
       if (this.ctx && this.ctx.state === 'suspended') {
         this.ctx.resume().catch(() => {});
       }
+      if (this.ctx && !this.dspInitialized) {
+        this.initDspChain();
+      }
     } catch (e) {
       console.warn('Web Audio initialization error (non-fatal):', e);
     }
+  }
+
+  initDspChain() {
+    if (this.dspInitialized || !this.ctx) return;
+    try {
+      this.mediaSourceNode = this.ctx.createMediaElementSource(this.audio);
+
+      // 1. Preamp Stage
+      this.preampGain = this.ctx.createGain();
+      this.preampGain.gain.value = 1.06;
+
+      // 2. Sub-Bass Shelf (55 Hz)
+      this.subBassFilter = this.ctx.createBiquadFilter();
+      this.subBassFilter.type = 'lowshelf';
+      this.subBassFilter.frequency.value = 55;
+
+      // 3. Mid-Bass Punch (140 Hz)
+      this.midBassFilter = this.ctx.createBiquadFilter();
+      this.midBassFilter.type = 'peaking';
+      this.midBassFilter.frequency.value = 140;
+      this.midBassFilter.Q.value = 1.2;
+
+      // 4. Low-Mid De-Mudding Dip (360 Hz)
+      this.mudCutFilter = this.ctx.createBiquadFilter();
+      this.mudCutFilter.type = 'peaking';
+      this.mudCutFilter.frequency.value = 360;
+      this.mudCutFilter.Q.value = 1.1;
+
+      // 5. Vocal & Lead Presence (3200 Hz)
+      this.presenceFilter = this.ctx.createBiquadFilter();
+      this.presenceFilter.type = 'peaking';
+      this.presenceFilter.frequency.value = 3200;
+      this.presenceFilter.Q.value = 1.0;
+
+      // 6. High-Shelf Air / Sparkle (11500 Hz)
+      this.trebleFilter = this.ctx.createBiquadFilter();
+      this.trebleFilter.type = 'highshelf';
+      this.trebleFilter.frequency.value = 11500;
+
+      // 7. Dedicated Bass Punch Booster (85 Hz)
+      this.bassBooster = this.ctx.createBiquadFilter();
+      this.bassBooster.type = 'peaking';
+      this.bassBooster.frequency.value = 85;
+      this.bassBooster.Q.value = 1.4;
+
+      // 8. Harmonic Warmth WaveShaper (Enriches mobile/earbud reproduction)
+      this.warmthNode = this.ctx.createWaveShaper();
+      this.warmthNode.curve = createWarmthCurve(1.2);
+      this.warmthNode.oversample = '2x';
+      this.warmthNode.channelCount = 2;
+      this.warmthNode.channelCountMode = 'explicit';
+
+      // 9. Stereo Spatial Widener (Mid / Side Processing)
+      this.msSplitter = this.ctx.createChannelSplitter(2);
+      this.midGain = this.ctx.createGain();
+      this.midGain.gain.value = 0.5;
+
+      this.sideGain = this.ctx.createGain();
+      this.sideGain.gain.value = 0.5 * 1.35;
+
+      this.invRight = this.ctx.createGain();
+      this.invRight.gain.value = -1.0;
+
+      this.invSide = this.ctx.createGain();
+      this.invSide.gain.value = -1.0;
+
+      this.leftSum = this.ctx.createGain();
+      this.leftSum.gain.value = 1.0;
+
+      this.rightSum = this.ctx.createGain();
+      this.rightSum.gain.value = 1.0;
+
+      this.msMerger = this.ctx.createChannelMerger(2);
+
+      // 10. Studio Dynamics Compressor (Spotify Loudness & Punch)
+      this.compressorNode = this.ctx.createDynamicsCompressor();
+      this.compressorNode.threshold.value = -20;
+      this.compressorNode.knee.value = 24;
+      this.compressorNode.ratio.value = 3.5;
+      this.compressorNode.attack.value = 0.003;
+      this.compressorNode.release.value = 0.22;
+
+      // 11. Real-time Analyser for live frequency visualizer
+      this.analyser = this.ctx.createAnalyser();
+      this.analyser.fftSize = 256;
+      this.analyser.smoothingTimeConstant = 0.82;
+      this.frequencyDataArray = new Uint8Array(this.analyser.frequencyBinCount);
+
+      // 12. Master Volume & Limiter Gain
+      this.masterGainNode = this.ctx.createGain();
+      this.masterGainNode.gain.value = this.isMuted ? 0 : this.volume;
+
+      // Connect Signal Chain
+      this.mediaSourceNode.connect(this.preampGain);
+      this.preampGain.connect(this.subBassFilter);
+      this.subBassFilter.connect(this.midBassFilter);
+      this.midBassFilter.connect(this.mudCutFilter);
+      this.mudCutFilter.connect(this.presenceFilter);
+      this.presenceFilter.connect(this.trebleFilter);
+      this.trebleFilter.connect(this.bassBooster);
+      this.bassBooster.connect(this.warmthNode);
+
+      // Connect Mid/Side Stereo Widener
+      this.warmthNode.connect(this.msSplitter);
+
+      // Mid: L + R
+      this.msSplitter.connect(this.midGain, 0);
+      this.msSplitter.connect(this.midGain, 1);
+
+      // Side: L - R
+      this.msSplitter.connect(this.sideGain, 0);
+      this.msSplitter.connect(this.invRight, 1);
+      this.invRight.connect(this.sideGain);
+
+      // Sum: L = Mid + Side, R = Mid - Side
+      this.midGain.connect(this.leftSum);
+      this.midGain.connect(this.rightSum);
+
+      this.sideGain.connect(this.leftSum);
+      this.sideGain.connect(this.invSide);
+      this.invSide.connect(this.rightSum);
+
+      this.leftSum.connect(this.msMerger, 0, 0);
+      this.rightSum.connect(this.msMerger, 0, 1);
+
+      // Connect to Dynamics Compressor, Analyser, Master Gain, and Output
+      this.msMerger.connect(this.compressorNode);
+      this.compressorNode.connect(this.analyser);
+      this.analyser.connect(this.masterGainNode);
+      this.masterGainNode.connect(this.ctx.destination);
+
+      this.dspInitialized = true;
+      this.applyCurrentProfile();
+      console.log('[Bappa Swar] Spotify Hi-Fi Studio Audio DSP Engine initialized.');
+    } catch (err) {
+      console.warn('[Bappa Swar] Web Audio DSP initialization fallback:', err);
+    }
+  }
+
+  applyCurrentProfile() {
+    if (!this.dspInitialized || !this.ctx) return;
+    const now = this.ctx.currentTime;
+    const rampTime = 0.04;
+
+    const profile = SOUND_PROFILES[this.currentProfile] || SOUND_PROFILES['spotify-master'];
+
+    if (!this.isEnhancerActive || profile.id === 'original') {
+      // Bypass / Original flat sound
+      this.subBassFilter.gain.setTargetAtTime(0, now, rampTime);
+      this.midBassFilter.gain.setTargetAtTime(0, now, rampTime);
+      this.mudCutFilter.gain.setTargetAtTime(0, now, rampTime);
+      this.presenceFilter.gain.setTargetAtTime(0, now, rampTime);
+      this.trebleFilter.gain.setTargetAtTime(0, now, rampTime);
+      this.bassBooster.gain.setTargetAtTime(0, now, rampTime);
+      this.sideGain.gain.setTargetAtTime(0.5, now, rampTime);
+      this.compressorNode.ratio.setTargetAtTime(1.0, now, rampTime);
+      this.compressorNode.threshold.setTargetAtTime(0, now, rampTime);
+      this.preampGain.gain.setTargetAtTime(1.0, now, rampTime);
+      return;
+    }
+
+    // Active Profile + Custom User Offsets
+    const finalSub = profile.subBass + this.userBassOffset;
+    const finalMidBass = profile.midBass + (this.userBassOffset * 0.7);
+    const finalBassBoost = profile.bassBoost + this.userBassOffset;
+    const finalTreble = profile.treble + this.userTrebleOffset;
+    const finalPresence = profile.presence + (this.userTrebleOffset * 0.5);
+
+    this.subBassFilter.gain.setTargetAtTime(finalSub, now, rampTime);
+    this.midBassFilter.gain.setTargetAtTime(finalMidBass, now, rampTime);
+    this.mudCutFilter.gain.setTargetAtTime(profile.mudCut, now, rampTime);
+    this.presenceFilter.gain.setTargetAtTime(finalPresence, now, rampTime);
+    this.trebleFilter.gain.setTargetAtTime(finalTreble, now, rampTime);
+    this.bassBooster.gain.setTargetAtTime(finalBassBoost, now, rampTime);
+
+    // Stereo width: 0.5 * profile.width * userWidth
+    const widthFactor = 0.5 * (profile.width || 1.35) * (this.userWidth || 1.0);
+    this.sideGain.gain.setTargetAtTime(widthFactor, now, rampTime);
+
+    // Compressor settings for punchy radio loudness
+    const c = profile.compressor;
+    if (c) {
+      this.compressorNode.threshold.setTargetAtTime(c.threshold, now, rampTime);
+      this.compressorNode.knee.setTargetAtTime(c.knee, now, rampTime);
+      this.compressorNode.ratio.setTargetAtTime(c.ratio, now, rampTime);
+      this.compressorNode.attack.setTargetAtTime(c.attack, now, rampTime);
+      this.compressorNode.release.setTargetAtTime(c.release, now, rampTime);
+    }
+    this.preampGain.gain.setTargetAtTime(1.06, now, rampTime);
   }
 
   bindAudioEvents() {
@@ -385,22 +715,76 @@ export class DevotionalPlayer {
 
   setVolume(vol) {
     this.volume = Math.max(0, Math.min(1, vol));
-    this.audio.volume = this.volume;
     if (this.volume > 0 && this.isMuted) {
       this.isMuted = false;
+    }
+    if (this.masterGainNode && this.ctx) {
+      const target = this.isMuted ? 0 : this.volume;
+      this.masterGainNode.gain.setTargetAtTime(target, this.ctx.currentTime, 0.02);
+      this.audio.volume = 1.0;
+    } else {
+      this.audio.volume = this.isMuted ? 0 : this.volume;
     }
     this.notifyVolumeChange();
   }
 
   toggleMute() {
-    if (this.isMuted) {
-      this.isMuted = false;
-      this.audio.volume = this.volume > 0 ? this.volume : 0.85;
+    this.isMuted = !this.isMuted;
+    if (this.masterGainNode && this.ctx) {
+      const target = this.isMuted ? 0 : (this.volume > 0 ? this.volume : 0.85);
+      this.masterGainNode.gain.setTargetAtTime(target, this.ctx.currentTime, 0.02);
+      this.audio.volume = 1.0;
     } else {
-      this.isMuted = true;
-      this.audio.volume = 0;
+      this.audio.volume = this.isMuted ? 0 : (this.volume > 0 ? this.volume : 0.85);
     }
     this.notifyVolumeChange();
+  }
+
+  // --- Hi-Fi Studio DSP Controls ---
+  setProfile(profileId) {
+    if (!SOUND_PROFILES[profileId]) return;
+    this.currentProfile = profileId;
+    try { localStorage.setItem('bappa_audio_profile', profileId); } catch(e) {}
+    this.applyCurrentProfile();
+    this.callbacks.onProfileChange.forEach(fn => fn(this.currentProfile, SOUND_PROFILES[this.currentProfile]));
+  }
+
+  toggleEnhancer() {
+    this.isEnhancerActive = !this.isEnhancerActive;
+    try { localStorage.setItem('bappa_audio_enhancer', String(this.isEnhancerActive)); } catch(e) {}
+    this.applyCurrentProfile();
+    this.callbacks.onEnhancerChange.forEach(fn => fn(this.isEnhancerActive));
+    return this.isEnhancerActive;
+  }
+
+  setEnhancerActive(active) {
+    this.isEnhancerActive = !!active;
+    try { localStorage.setItem('bappa_audio_enhancer', String(this.isEnhancerActive)); } catch(e) {}
+    this.applyCurrentProfile();
+    this.callbacks.onEnhancerChange.forEach(fn => fn(this.isEnhancerActive));
+  }
+
+  setUserBass(offset) {
+    this.userBassOffset = Math.max(-8, Math.min(8, offset));
+    try { localStorage.setItem('bappa_audio_bass', String(this.userBassOffset)); } catch(e) {}
+    this.applyCurrentProfile();
+  }
+
+  setUserTreble(offset) {
+    this.userTrebleOffset = Math.max(-8, Math.min(8, offset));
+    try { localStorage.setItem('bappa_audio_treble', String(this.userTrebleOffset)); } catch(e) {}
+    this.applyCurrentProfile();
+  }
+
+  setUserWidth(factor) {
+    this.userWidth = Math.max(0.5, Math.min(2.5, factor));
+    this.applyCurrentProfile();
+  }
+
+  getFrequencyData() {
+    if (!this.analyser || !this.frequencyDataArray) return null;
+    this.analyser.getByteFrequencyData(this.frequencyDataArray);
+    return this.frequencyDataArray;
   }
 
   // Subscribe to events
@@ -408,6 +792,8 @@ export class DevotionalPlayer {
   onStateChange(fn) { this.callbacks.onStateChange.push(fn); }
   onTimeUpdate(fn) { this.callbacks.onTimeUpdate.push(fn); }
   onVolumeChange(fn) { this.callbacks.onVolumeChange.push(fn); }
+  onEnhancerChange(fn) { this.callbacks.onEnhancerChange.push(fn); }
+  onProfileChange(fn) { this.callbacks.onProfileChange.push(fn); }
 
   notifyTrackChange() {
     this.callbacks.onTrackChange.forEach(fn => fn(this.currentTrack, this.currentMode, this.currentSongIndex));

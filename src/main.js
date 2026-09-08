@@ -6,7 +6,7 @@ import { TempleSanctum } from './TempleSanctum.js';
 import { ParticleEngine } from './ParticleEngine.js';
 import { GalaxyBackground } from './GalaxyBackground.js';
 import { PostProcessingManager } from './PostProcessing.js';
-import { player } from './AudioSynth.js';
+import { player, SOUND_PROFILES } from './AudioSynth.js';
 import { MUSIC_CATALOG } from './musicData.js';
 
 class ExperienceApp {
@@ -25,6 +25,7 @@ class ExperienceApp {
     this.initModals();
     this.completeLoading();
     this.registerServiceWorker();
+    this.initPwaInstall();
 
     // 2. Only initialize Three.js if canvas container is actually visible
     const isCanvasVisible = this.container && window.getComputedStyle(this.container).display !== 'none';
@@ -59,6 +60,87 @@ class ExperienceApp {
         navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
       });
     }
+  }
+
+  // Seamless 1-Click Device Installation (Android, iOS, Desktop PWA)
+  initPwaInstall() {
+    const btnInstall = document.getElementById('btn-install-pwa');
+    const modalInstall = document.getElementById('install-modal');
+    const btnCloseInstall = document.getElementById('close-install-modal');
+    const btnModalAction = document.getElementById('btn-modal-install-action');
+    let deferredPrompt = null;
+
+    if (!btnInstall) return;
+
+    // Detect if already installed in standalone window mode
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    if (isStandalone) {
+      btnInstall.innerHTML = '<span class="install-icon">✓</span><span class="install-text">Installed</span>';
+      btnInstall.classList.add('installed');
+      btnInstall.title = 'Bappa Swar App is already installed on this device';
+      btnInstall.disabled = true;
+      return;
+    }
+
+    // Capture browser native install prompt
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      btnInstall.classList.add('pulse');
+      if (btnModalAction) btnModalAction.style.display = 'inline-flex';
+    });
+
+    const triggerInstall = async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          console.log('[Bappa Swar] User accepted app installation');
+          btnInstall.innerHTML = '<span class="install-icon">✓</span><span class="install-text">Installed</span>';
+          btnInstall.classList.add('installed');
+          btnInstall.disabled = true;
+          if (modalInstall) modalInstall.classList.remove('show');
+        }
+        deferredPrompt = null;
+      } else {
+        // iOS or browsers where native prompt is unavailable: show guided modal
+        if (modalInstall) {
+          modalInstall.classList.add('show');
+        }
+      }
+    };
+
+    btnInstall.addEventListener('click', (e) => {
+      e.stopPropagation();
+      triggerInstall();
+    });
+
+    if (btnModalAction) {
+      btnModalAction.addEventListener('click', (e) => {
+        e.stopPropagation();
+        triggerInstall();
+      });
+    }
+
+    if (btnCloseInstall) {
+      btnCloseInstall.addEventListener('click', () => {
+        modalInstall.classList.remove('show');
+      });
+    }
+
+    if (modalInstall) {
+      modalInstall.addEventListener('click', (e) => {
+        if (e.target === modalInstall) modalInstall.classList.remove('show');
+      });
+    }
+
+    window.addEventListener('appinstalled', () => {
+      console.log('[Bappa Swar] App successfully installed on device!');
+      btnInstall.innerHTML = '<span class="install-icon">✓</span><span class="install-text">Installed</span>';
+      btnInstall.classList.add('installed');
+      btnInstall.disabled = true;
+      if (modalInstall) modalInstall.classList.remove('show');
+    });
   }
 
   initRenderer() {
@@ -554,6 +636,18 @@ class ExperienceApp {
 
     // Populate Playlist Drawer
     this.initPlaylistDrawer();
+
+    // Initialize Spotify-Grade Hi-Fi Studio Sound Enhancer
+    this.initHiFiStudioUI();
+
+    // Feature the fresh random Bhakti song on the mode card for instant discovery
+    const initialRandomSong = MUSIC_CATALOG.songs && MUSIC_CATALOG.songs[player.currentSongIndex];
+    if (initialRandomSong) {
+      const cardSongsSub = document.getElementById('card-songs-sub');
+      if (cardSongsSub) {
+        cardSongsSub.textContent = `अखंड भक्तिगीते • ${initialRandomSong.title}`;
+      }
+    }
   }
 
   // =========================================================
@@ -653,6 +747,174 @@ class ExperienceApp {
     modalPlaylist.addEventListener('click', (e) => {
       if (e.target === modalPlaylist) modalPlaylist.classList.remove('show');
     });
+  }
+
+  // =========================================================
+  // SPOTIFY-GRADE HI-FI STUDIO SOUND ENHANCER UI
+  // =========================================================
+
+  initHiFiStudioUI() {
+    const btnOpenHiFi = document.getElementById('btn-open-hifi');
+    const modalHiFi = document.getElementById('hifi-modal');
+    const btnCloseHiFi = document.getElementById('close-hifi');
+    const masterToggle = document.getElementById('hifi-master-toggle');
+    const badgeStatus = document.getElementById('hifi-badge-status');
+    const statusText = document.getElementById('hifi-status-text');
+    const profilesGrid = document.getElementById('hifi-profiles-grid');
+    const canvas = document.getElementById('hifi-spectrum-canvas');
+
+    if (!btnOpenHiFi || !modalHiFi) return;
+
+    // 1. Render Sound Profile Cards
+    const renderProfiles = () => {
+      if (!profilesGrid) return;
+      profilesGrid.innerHTML = '';
+      Object.values(SOUND_PROFILES).forEach(profile => {
+        const isSelected = player.currentProfile === profile.id;
+        const card = document.createElement('div');
+        card.className = `hifi-profile-card ${isSelected ? 'active' : ''}`;
+        card.dataset.profileId = profile.id;
+        card.innerHTML = `
+          <div class="profile-card-top">
+            <span class="profile-icon">${profile.icon}</span>
+            <span class="profile-badge">${profile.badge}</span>
+          </div>
+          <div class="profile-name">${profile.name}</div>
+          <div class="profile-tagline">${profile.tagline}</div>
+          <div class="profile-check">${isSelected ? '✓' : ''}</div>
+        `;
+        card.addEventListener('click', () => {
+          player.setProfile(profile.id);
+          renderProfiles();
+          updateUIState();
+        });
+        profilesGrid.appendChild(card);
+      });
+    };
+
+    // 2. Update UI state based on player settings
+    const updateUIState = () => {
+      const active = player.isEnhancerActive;
+      btnOpenHiFi.classList.toggle('active', active);
+      if (masterToggle) masterToggle.checked = active;
+
+      if (badgeStatus) {
+        badgeStatus.textContent = active ? 'HD ACTIVE' : 'BYPASS (OFF)';
+        badgeStatus.className = `hifi-status-badge ${active ? 'active' : 'inactive'}`;
+      }
+
+      if (statusText) {
+        const current = SOUND_PROFILES[player.currentProfile] || SOUND_PROFILES['spotify-master'];
+        statusText.textContent = active 
+          ? `${current.name} • ${current.tagline}` 
+          : 'Original Raw Audio (Mastering DSP bypassed for A/B testing)';
+      }
+
+      // Update UI State completed
+    };
+
+    renderProfiles();
+    updateUIState();
+
+    // 3. Toggle Master Enhancer (Instant A/B Testing)
+    if (masterToggle) {
+      masterToggle.addEventListener('change', (e) => {
+        player.setEnhancerActive(e.target.checked);
+        updateUIState();
+        renderProfiles();
+      });
+    }
+
+    // 4. Open/Close Modal
+    btnOpenHiFi.addEventListener('click', (e) => {
+      e.stopPropagation();
+      modalHiFi.classList.add('show');
+      updateUIState();
+      renderProfiles();
+    });
+
+    if (btnCloseHiFi) {
+      btnCloseHiFi.addEventListener('click', () => {
+        modalHiFi.classList.remove('show');
+      });
+    }
+
+    modalHiFi.addEventListener('click', (e) => {
+      if (e.target === modalHiFi) modalHiFi.classList.remove('show');
+    });
+
+    // 6. Listen for changes from player
+    player.onEnhancerChange(() => {
+      updateUIState();
+      renderProfiles();
+    });
+
+    player.onProfileChange(() => {
+      updateUIState();
+      renderProfiles();
+    });
+
+    // 7. Real-Time Frequency Spectrum Visualizer & Reactive Equalizer
+    let canvasCtx = canvas ? canvas.getContext('2d') : null;
+
+    const drawVisualizer = () => {
+      requestAnimationFrame(drawVisualizer);
+
+      const freqData = player.getFrequencyData();
+      if (!freqData) return;
+
+      // Real-time animation of card playing bars to match actual frequency energy
+      if (player.isPlaying) {
+        const activeCardBars = document.querySelectorAll('.music-mode-card.playing .playing-bars span');
+        if (activeCardBars.length === 4) {
+          const b0 = Math.max(4, (freqData[2] / 255) * 22);
+          const b1 = Math.max(6, (freqData[8] / 255) * 22);
+          const b2 = Math.max(5, (freqData[22] / 255) * 22);
+          const b3 = Math.max(4, (freqData[50] / 255) * 22);
+          activeCardBars[0].style.height = `${b0}px`;
+          activeCardBars[1].style.height = `${b1}px`;
+          activeCardBars[2].style.height = `${b2}px`;
+          activeCardBars[3].style.height = `${b3}px`;
+        }
+      }
+
+      // Draw canvas spectrum only if modal is visible to save CPU/GPU cycles
+      if (!canvas || !canvasCtx || !modalHiFi.classList.contains('show')) return;
+
+      const width = canvas.width;
+      const height = canvas.height;
+      canvasCtx.clearRect(0, 0, width, height);
+
+      const numBars = 42;
+      const barWidth = (width / numBars) - 2;
+      const step = Math.floor(freqData.length / numBars);
+
+      for (let i = 0; i < numBars; i++) {
+        const binIndex = Math.min(i * step, freqData.length - 1);
+        const val = player.isPlaying ? freqData[binIndex] : 8;
+        const percent = val / 255;
+        const barHeight = Math.max(3, percent * (height - 8));
+        const x = i * (barWidth + 2);
+        const y = height - barHeight;
+
+        // Devotional Gold / Saffron Gradient with warm studio radiance
+        const grad = canvasCtx.createLinearGradient(0, height, 0, y);
+        grad.addColorStop(0, '#ff7518');
+        grad.addColorStop(0.55, '#ffb703');
+        grad.addColorStop(1, '#fff2a8');
+
+        canvasCtx.fillStyle = grad;
+        canvasCtx.shadowColor = 'rgba(255, 183, 3, 0.4)';
+        canvasCtx.shadowBlur = 4;
+        canvasCtx.fillRect(x, y, barWidth, barHeight);
+
+        // Crisp white peak cap
+        canvasCtx.fillStyle = '#ffffff';
+        canvasCtx.fillRect(x, Math.max(0, y - 2), barWidth, 1.5);
+      }
+    };
+
+    requestAnimationFrame(drawVisualizer);
   }
 
   // =========================================================

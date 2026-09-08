@@ -18,6 +18,8 @@
   <meta name="msapplication-TileImage" content="/images/bappa_theme_hero.png">
   <meta name="msapplication-navbutton-color" content="#ff7518">
   <meta name="msapplication-starturl" content="/index.html">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -88,6 +90,11 @@
         </div>
       </div>
       <div class="top-bar-actions">
+        <!-- 1-Click PWA App Install Button -->
+        <button class="top-nav-install-btn" id="btn-install-pwa" title="Install Bappa Swar App" aria-label="Install App">
+          <span class="install-icon">📲</span>
+          <span class="install-text">Install App</span>
+        </button>
         <button class="top-nav-creator-link" id="nav-btn-creator" title="Meet the Creator" aria-label="Meet the Creator">
           <span>🪔</span>
           <span>Creator</span>
@@ -220,7 +227,7 @@
         <div class="card-text">
           <div class="card-badges-row">
             <span class="card-badge">महा आरती</span>
-            <span class="aarti-menu-btn" id="btn-open-aarti-menu" title="सर्व आरत्या संग्रह यादी">सर्व आरत्या (४) ▾</span>
+            <span class="aarti-menu-btn" id="btn-open-aarti-menu" title="सर्व आरत्या संग्रह यादी">सर्व आरत्या (५) ▾</span>
           </div>
           <h2 class="card-title" id="card-aarti-title">आरती (Aarti)</h2>
           <p class="card-sub" id="card-aarti-sub">सुखकर्ता दुःखहर्ता • लता मंगेशकर</p>
@@ -318,8 +325,15 @@
           <button id="btn-stop" style="display: none;"></button>
         </div>
 
-        <!-- Right Column: Volume Control -->
+        <!-- Right Column: Hi-Fi Studio Enhancer & Volume Control -->
         <div class="player-right-col">
+          <!-- Hi-Fi Studio Enhancer Badge Button -->
+          <button class="hifi-player-btn active" id="btn-open-hifi" title="Spotify Hi-Fi Studio Enhancer (Click for Settings)" aria-label="Spotify Hi-Fi Studio Audio Enhancer">
+            <span class="hifi-sparkle">✨</span>
+            <span class="hifi-label">Hi-Fi HD</span>
+            <span class="hifi-live-dot" title="DSP Active"></span>
+          </button>
+
           <!-- Volume Controls -->
           <div class="volume-control">
             <button class="icon-btn" id="btn-mute" title="Mute / Unmute" aria-label="Mute or Unmute">
@@ -343,7 +357,7 @@
       <button class="modal-close" id="close-aarti-modal" aria-label="Close Aarti Menu">&times;</button>
       <div class="modal-om">🪔</div>
       <h2 class="modal-title">श्री महा आरती संग्रह</h2>
-      <p class="modal-desc">एकूण ४ पावन आरत्या • ऐकण्यासाठी आरती निवडा:</p>
+      <p class="modal-desc">एकूण ५ पावन आरत्या • ऐकण्यासाठी आरती निवडा:</p>
       <div class="aarti-list-container" id="aarti-list-container">
         <!-- Populated dynamically via JS -->
       </div>
@@ -471,6 +485,99 @@
         <p class="footer-blessing">Made with devotion and technology 🪔</p>
         <p class="footer-shloka">॥ श्री गणेशाय नमः ॥</p>
       </footer>
+    </div>
+  </div>
+
+  <!-- Studio Hi-Fi Sound Enhancer Modal (Spotify-Grade Master Audio) -->
+  <div class="modal" id="hifi-modal" aria-hidden="true">
+    <div class="modal-card hifi-card">
+      <button class="modal-close" id="close-hifi" aria-label="Close Sound Enhancer">&times;</button>
+      <div class="modal-om">🎧</div>
+      <h2 class="modal-title">॥ स्टुडिओ हाय-फाय ध्वनी ॥</h2>
+      <p class="modal-desc">Spotify Studio Master • High-Fidelity Audio Enhancer</p>
+      
+      <!-- Top Master Toggle Switch Bar -->
+      <div class="hifi-master-toggle-box">
+        <div class="hifi-toggle-info">
+          <div class="hifi-toggle-title-row">
+            <span class="hifi-toggle-title">Spotify Hi-Fi Enhancer</span>
+            <span class="hifi-status-badge active" id="hifi-badge-status">HD ACTIVE</span>
+          </div>
+          <span class="hifi-toggle-desc" id="hifi-status-text">Studio DSP with punchy bass, vocal presence & silky highs</span>
+        </div>
+        <label class="hifi-switch" aria-label="Toggle Hi-Fi Audio Enhancer">
+          <input type="checkbox" id="hifi-master-toggle" checked>
+          <span class="hifi-slider"></span>
+        </label>
+      </div>
+
+      <!-- Real-Time Frequency Spectrum Visualizer -->
+      <div class="hifi-visualizer-container">
+        <div class="visualizer-header">
+          <span class="vis-badge">LIVE 24-BIT SPECTRUM</span>
+          <span class="vis-norm">Loudness: -14 LUFS (Spotify Standard)</span>
+        </div>
+        <canvas id="hifi-spectrum-canvas" class="hifi-canvas" width="480" height="70"></canvas>
+      </div>
+
+      <!-- Sound Profiles Section -->
+      <div class="hifi-section-label">ध्वनी प्रोफाईल (Sound Profiles)</div>
+      <div class="hifi-profiles-grid" id="hifi-profiles-grid">
+        <!-- Injected dynamically via JS -->
+      </div>
+
+
+
+      <!-- A/B Comparison Tip -->
+      <div class="hifi-ab-tip">
+        <span class="ab-icon">💡</span>
+        <span><b>Pro Tip:</b> Turn the switch OFF and ON while a song plays to hear the dramatic difference between flat raw audio and Spotify-grade studio mastering!</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Device Install Guide Modal (Mobile & Desktop PWA) -->
+  <div class="modal" id="install-modal" aria-hidden="true">
+    <div class="modal-card install-modal-card">
+      <button class="modal-close" id="close-install-modal" aria-label="Close Install Guide">&times;</button>
+      <div class="modal-om">📲</div>
+      <h2 class="modal-title">॥ अ‍ॅप इन्स्टॉल करा ॥</h2>
+      <p class="modal-desc">Install Bappa Swar for 1-Tap Daily Darshan & Full Offline Audio</p>
+      
+      <div class="install-steps-list">
+        <div class="install-step-item">
+          <div class="step-badge">१</div>
+          <div class="step-content">
+            <b class="step-title">ब्राउझर मेनू उघडा (Open Menu):</b>
+            <span class="step-text">Safari मध्ये खालील <b>Share ⎋</b> बटण दाबा किंवा Chrome / Edge मध्ये वर उजवीकडील <b>⋮ Menu</b> दाबा.</span>
+          </div>
+        </div>
+        <div class="install-step-item">
+          <div class="step-badge">२</div>
+          <div class="step-content">
+            <b class="step-title">होम स्क्रीनवर जोडा (Add to Home Screen):</b>
+            <span class="step-text">मेनूमधून <b>'Add to Home Screen' (होम स्क्रीनवर जोडा ➕)</b> किंवा <b>'Install App'</b> निवडा.</span>
+          </div>
+        </div>
+        <div class="install-step-item">
+          <div class="step-badge">३</div>
+          <div class="step-content">
+            <b class="step-title">स्वातंत्र्य अ‍ॅप सुरू करा (Launch App):</b>
+            <span class="step-text">तुमच्या फोनच्या होम स्क्रीनवर 'बाप्पा स्वर' चा सुंदर अ‍ॅप आयकॉन तयार होईल — कोणत्याही ब्राउझर बार शिवाय 1-टॅप मध्ये उघडा!</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="install-benefits-box">
+        <span class="benefit-item">✨ ०% जाहिराती (Zero Ads)</span>
+        <span class="benefit-item">⚡ १-टॅप इन्स्टंट दर्शन</span>
+        <span class="benefit-item">📶 ऑफलाइन आरती सपोर्ट</span>
+      </div>
+
+      <button type="button" class="install-action-btn" id="btn-modal-install-action">
+        <span>📲</span>
+        <span>आत्ताच इन्स्टॉल करा (Install Now)</span>
+      </button>
     </div>
   </div>
 

@@ -1,7 +1,7 @@
 // Bappa Swar Devotional App Service Worker
 // Full Offline Architecture: App Shell + Intelligent Media Range-Request Caching
 
-const SHELL_CACHE_NAME = 'bappaswar-shell-v4';
+const SHELL_CACHE_NAME = 'bappaswar-shell-v5';
 const MEDIA_CACHE_NAME = 'bappaswar-media-v1';
 
 const ASSETS_TO_CACHE = [
@@ -25,10 +25,21 @@ const CORE_AARTIS_TO_PRECACHE = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(SHELL_CACHE_NAME).then((cache) => {
-      // Pre-cache core shell
-      return cache.addAll(ASSETS_TO_CACHE).catch((err) => {
-        console.warn('[SW] Shell pre-caching non-fatal warning:', err);
-      });
+      // Pre-cache core shell assets resiliently without failing on redirects
+      return Promise.all(
+        ASSETS_TO_CACHE.map((url) => {
+          return fetch(url)
+            .then((res) => {
+              if (res.ok) {
+                const cleanRes = res.redirected
+                  ? new Response(res.body, { headers: res.headers, status: res.status, statusText: res.statusText })
+                  : res;
+                return cache.put(url, cleanRes);
+              }
+            })
+            .catch((err) => console.warn('[SW] Pre-cache item warning:', url, err));
+        })
+      );
     }).then(() => {
       // Pre-cache core Aartis in background without blocking installation
       caches.open(MEDIA_CACHE_NAME).then((mediaCache) => {
@@ -78,15 +89,53 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle standard page & asset requests (Cache-first with network refresh)
+  // Handle HTML Page Navigation Requests
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse.ok) {
+            // Strip .redirected flag to prevent Chrome ERR_FAILED bug
+            const responseToUse = networkResponse.redirected
+              ? new Response(networkResponse.body, {
+                  headers: networkResponse.headers,
+                  status: networkResponse.status,
+                  statusText: networkResponse.statusText
+                })
+              : networkResponse;
+
+            const responseToCache = responseToUse.clone();
+            caches.open(SHELL_CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache).catch(() => {});
+              cache.put('/', responseToCache.clone()).catch(() => {});
+              cache.put('/index.html', responseToCache.clone()).catch(() => {});
+            });
+            return responseToUse;
+          }
+          return caches.match(event.request)
+            .then((cached) => cached || caches.match('/') || caches.match('/index.html'));
+        })
+        .catch(async () => {
+          const cached = await caches.match(event.request);
+          if (cached) return cached;
+          const rootCached = await caches.match('/');
+          if (rootCached) return rootCached;
+          const indexCached = await caches.match('/index.html');
+          if (indexCached) return indexCached;
+          return new Response('Offline', { status: 503, statusText: 'Offline' });
+        })
+    );
+    return;
+  }
+
+  // Handle standard static assets (Cache-first with background network refresh)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Fetch in background to update cache for next load
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
             caches.open(SHELL_CACHE_NAME).then((cache) => {
-              cache.put(event.request, networkResponse);
+              cache.put(event.request, networkResponse).catch(() => {});
             });
           }
         }).catch(() => {});
@@ -95,19 +144,13 @@ self.addEventListener('fetch', (event) => {
 
       return fetch(event.request)
         .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          if (networkResponse && networkResponse.status === 200) {
             const responseToCache = networkResponse.clone();
             caches.open(SHELL_CACHE_NAME).then((cache) => {
               cache.put(event.request, responseToCache).catch(() => {});
             });
           }
           return networkResponse;
-        })
-        .catch(() => {
-          if (event.request.mode === 'navigate') {
-            return caches.match('/index.html');
-          }
-          return new Response('Offline', { status: 503, statusText: 'Offline' });
         });
     })
   );

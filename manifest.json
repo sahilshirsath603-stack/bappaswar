@@ -1,9 +1,9 @@
 {
-  "id": "/index.html",
+  "id": "/",
   "name": "॥ बाप्पा स्वर ॥ Bappa Swar",
   "short_name": "Bappa Swar",
   "description": "Devotional Music & Darshan of Ganpati Bappa - Shlok, Aarti & Bhajans",
-  "start_url": "/index.html",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",

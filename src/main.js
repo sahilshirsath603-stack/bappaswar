@@ -70,16 +70,45 @@ class ExperienceApp {
     const btnModalAction = document.getElementById('btn-modal-install-action');
     let deferredPrompt = null;
 
-    if (!btnInstall) return;
+    if (!btnInstall || !modalInstall) return;
 
-    // Detect if already installed in standalone window mode
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-    if (isStandalone) {
-      btnInstall.innerHTML = '<span class="install-icon">✓</span><span class="install-text">Installed</span>';
-      btnInstall.classList.add('installed');
-      btnInstall.title = 'Bappa Swar App is already installed on this device';
-      btnInstall.disabled = true;
+    // Detect if user is on Windows - don't show install option for Windows users
+    const isWindows = /Windows|Win32|Win64|WOW64/i.test(navigator.userAgent || '') || 
+                      (navigator.platform && navigator.platform.indexOf('Win') !== -1) ||
+                      (navigator.userAgentData && navigator.userAgentData.platform === 'Windows');
+
+    if (isWindows) {
+      document.documentElement.classList.add('windows-user');
+      btnInstall.style.display = 'none';
+      modalInstall.style.display = 'none';
       return;
+    }
+
+    // Detect if already installed in standalone window mode (PWA / home screen app)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+    const openInstallModal = () => {
+      modalInstall.classList.add('show');
+      modalInstall.setAttribute('aria-hidden', 'false');
+    };
+
+    const closeInstallModal = () => {
+      modalInstall.classList.remove('show');
+      modalInstall.setAttribute('aria-hidden', 'true');
+    };
+
+    const setInstalledState = () => {
+      btnInstall.innerHTML = '<span class="install-icon">✓</span><span class="install-text">App Active</span>';
+      btnInstall.classList.add('installed');
+      btnInstall.title = '॥ बाप्पा स्वर ॥ Devotional App Active';
+      if (btnModalAction) {
+        btnModalAction.innerHTML = '<span>🙏</span><span>॥ अ‍ॅप आधीच इन्स्टॉल केले आहे (App Active) ॥</span>';
+        btnModalAction.classList.add('app-active-btn');
+      }
+    };
+
+    if (isStandalone) {
+      setInstalledState();
     }
 
     // Capture browser native install prompt
@@ -87,59 +116,79 @@ class ExperienceApp {
       e.preventDefault();
       deferredPrompt = e;
       btnInstall.classList.add('pulse');
-      if (btnModalAction) btnModalAction.style.display = 'inline-flex';
     });
 
-    const triggerInstall = async () => {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const choice = await deferredPrompt.userChoice;
-        if (choice && choice.outcome === 'accepted') {
-          console.log('[Bappa Swar] User accepted app installation');
-          btnInstall.innerHTML = '<span class="install-icon">✓</span><span class="install-text">Installed</span>';
-          btnInstall.classList.add('installed');
-          btnInstall.disabled = true;
-          if (modalInstall) modalInstall.classList.remove('show');
-        }
-        deferredPrompt = null;
-      } else {
-        // iOS or browsers where native prompt is unavailable: show guided modal
-        if (modalInstall) {
-          modalInstall.classList.add('show');
-        }
-      }
-    };
-
+    // Clicking top-bar button ALWAYS reliably opens the installation modal ("this page")
     btnInstall.addEventListener('click', (e) => {
       e.stopPropagation();
-      triggerInstall();
+      openInstallModal();
     });
 
+    // Handle "Install Now" action button inside the modal
     if (btnModalAction) {
-      btnModalAction.addEventListener('click', (e) => {
+      btnModalAction.addEventListener('click', async (e) => {
         e.stopPropagation();
-        triggerInstall();
+
+        if (isStandalone) {
+          // If already in standalone app, offer to share with family or close
+          if (navigator.share) {
+            try {
+              await navigator.share({
+                title: '॥ बाप्पा स्वर ॥ Bappa Swar',
+                text: 'बाप्पाच्या सुंदर दर्शन आणि आरत्यांसाठी बाप्पा स्वर अ‍ॅप नक्की वापरा!',
+                url: window.location.origin
+              });
+            } catch (err) {}
+          } else {
+            closeInstallModal();
+          }
+          return;
+        }
+
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          const choice = await deferredPrompt.userChoice;
+          if (choice && choice.outcome === 'accepted') {
+            console.log('[Bappa Swar] User accepted app installation');
+            setInstalledState();
+            closeInstallModal();
+          }
+          deferredPrompt = null;
+        } else {
+          // Guided fallback (iOS Safari or browsers without native prompt):
+          // Pulsing highlight on the 3 steps so users clearly see how to install
+          const stepsList = modalInstall.querySelector('.install-steps-list');
+          if (stepsList) {
+            stepsList.classList.add('highlight-pulse');
+            setTimeout(() => stepsList.classList.remove('highlight-pulse'), 1800);
+          }
+        }
       });
     }
 
     if (btnCloseInstall) {
       btnCloseInstall.addEventListener('click', () => {
-        modalInstall.classList.remove('show');
+        closeInstallModal();
       });
     }
 
-    if (modalInstall) {
-      modalInstall.addEventListener('click', (e) => {
-        if (e.target === modalInstall) modalInstall.classList.remove('show');
-      });
-    }
+    modalInstall.addEventListener('click', (e) => {
+      if (e.target === modalInstall) {
+        closeInstallModal();
+      }
+    });
+
+    // Close on Escape key
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modalInstall.classList.contains('show')) {
+        closeInstallModal();
+      }
+    });
 
     window.addEventListener('appinstalled', () => {
       console.log('[Bappa Swar] App successfully installed on device!');
-      btnInstall.innerHTML = '<span class="install-icon">✓</span><span class="install-text">Installed</span>';
-      btnInstall.classList.add('installed');
-      btnInstall.disabled = true;
-      if (modalInstall) modalInstall.classList.remove('show');
+      setInstalledState();
+      closeInstallModal();
     });
   }
 
@@ -513,6 +562,20 @@ class ExperienceApp {
           btnRepeat.classList.toggle('active', isRepeat);
         });
       }
+    }
+
+    // --- Favorite Heart Button ---
+    const btnFav = document.getElementById('btn-fav');
+    if (btnFav) {
+      btnFav.addEventListener('click', () => {
+        const isFav = btnFav.classList.toggle('active');
+        const icon = btnFav.querySelector('.icon-fav');
+        if (icon) {
+          icon.setAttribute('fill', isFav ? '#ef4444' : 'rgba(255, 255, 255, 0.4)');
+        }
+        btnFav.style.transform = 'scale(1.3)';
+        setTimeout(() => { btnFav.style.transform = ''; }, 200);
+      });
     }
 
     // --- Top Bar Actions ---

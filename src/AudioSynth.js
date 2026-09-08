@@ -363,8 +363,8 @@ export class DevotionalPlayer {
           artist: this.currentTrack.artist || 'Devotional Chants',
           album: '॥ बाप्पा स्वर ॥ Bappa Swar',
           artwork: [
-            { src: '/images/bappa_theme_hero.png', sizes: '512x512', type: 'image/png' },
-            { src: '/images/player_thumb.jpg', sizes: '192x192', type: 'image/jpeg' }
+            { src: '/images/icon-512.png', sizes: '512x512', type: 'image/png' },
+            { src: '/images/icon-192.png', sizes: '192x192', type: 'image/png' }
           ]
         });
 

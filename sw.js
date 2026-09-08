@@ -1,7 +1,7 @@
 // Bappa Swar Devotional App Service Worker
 // Full Offline Architecture: App Shell + Intelligent Media Range-Request Caching
 
-const SHELL_CACHE_NAME = 'bappaswar-shell-v5';
+const SHELL_CACHE_NAME = 'bappaswar-shell-v6';
 const MEDIA_CACHE_NAME = 'bappaswar-media-v1';
 
 const ASSETS_TO_CACHE = [
@@ -10,6 +10,8 @@ const ASSETS_TO_CACHE = [
   '/creator.html',
   '/manifest.json',
   '/images/bappa_theme_hero.png',
+  '/images/icon-192.png',
+  '/images/icon-512.png',
   '/images/player_thumb.jpg'
 ];
 
@@ -105,11 +107,21 @@ self.addEventListener('fetch', (event) => {
               : networkResponse;
 
             const responseToCache = responseToUse.clone();
-            caches.open(SHELL_CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache).catch(() => {});
-              cache.put('/', responseToCache.clone()).catch(() => {});
-              cache.put('/index.html', responseToCache.clone()).catch(() => {});
-            });
+            caches.open(SHELL_CACHE_NAME).then(async (cache) => {
+              try {
+                await cache.put(event.request, responseToCache);
+                const url = new URL(event.request.url);
+                if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '') {
+                  const cachedItem = await cache.match(event.request);
+                  if (cachedItem) {
+                    await cache.put('/', cachedItem.clone());
+                    await cache.put('/index.html', cachedItem.clone());
+                  }
+                }
+              } catch (e) {
+                // Silently ignore caching errors
+              }
+            }).catch(() => {});
             return responseToUse;
           }
           return caches.match(event.request)

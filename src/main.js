@@ -804,7 +804,7 @@ class ExperienceApp {
       }
 
       if (statusText) {
-        const current = SOUND_PROFILES[player.currentProfile] || SOUND_PROFILES['spotify-master'];
+        const current = SOUND_PROFILES[player.currentProfile] || SOUND_PROFILES['original'];
         statusText.textContent = active 
           ? `${current.name} • ${current.tagline}` 
           : 'Original Raw Audio (Mastering DSP bypassed for A/B testing)';

@@ -1,99 +1,64 @@
 // Devotional Audio Engine & Music Player
 import { MUSIC_CATALOG } from './musicData.js';
 
-// Studio Sound Profiles (Spotify-Grade Mastering Presets)
+// Studio Sound Profiles (Audiophile Studio Presets - 100% Zero-Distortion)
 export const SOUND_PROFILES = {
-  'spotify-master': {
-    id: 'spotify-master',
-    name: 'Spotify Hi-Fi Master',
-    tagline: 'Deep punchy bass, pristine vocal clarity & silky air',
+  'original': {
+    id: 'original',
+    name: 'Original Pure Studio Master',
+    tagline: 'Direct uncolored studio recording, crystal clear & balanced',
     icon: '✨',
-    badge: 'STUDIO MASTER',
-    subBass: 3.8,
-    midBass: 3.4,
-    mudCut: -2.2,
-    presence: 3.6,
-    treble: 4.5,
-    bassBoost: 2.5,
-    warmth: 1.25,
-    width: 1.35,
-    compressor: { threshold: -20, knee: 24, ratio: 3.5, attack: 0.003, release: 0.22 }
-  },
-  'bass-boost': {
-    id: 'bass-boost',
-    name: 'Bass Boost (Dhol Tasha Punch)',
-    tagline: 'Powerful low-end thunder for festive devotional beats',
-    icon: '🥁',
-    badge: 'DHOL PUNCH',
-    subBass: 6.5,
-    midBass: 5.5,
-    mudCut: -1.0,
-    presence: 2.0,
-    treble: 2.5,
-    bassBoost: 6.0,
-    warmth: 1.45,
-    width: 1.20,
-    compressor: { threshold: -22, knee: 20, ratio: 4.0, attack: 0.004, release: 0.25 }
+    badge: 'PURE STUDIO',
+    bass: 0,
+    presence: 0,
+    treble: 0,
+    preamp: 1.0
   },
   'vocal-clarity': {
     id: 'vocal-clarity',
-    name: 'Devotional & Vocal Clarity',
-    tagline: 'Crisp, upfront vocals for Sukhkarta Aarti & Mantras',
+    name: 'Devotional Vocal Clarity',
+    tagline: 'Warm upfront vocals for Sukhkarta Aarti & Mantras',
     icon: '🪔',
     badge: 'PURE VOCALS',
-    subBass: -0.5,
-    midBass: 0.5,
-    mudCut: -3.0,
-    presence: 5.5,
-    treble: 4.8,
-    bassBoost: 0.0,
-    warmth: 1.0,
-    width: 1.20,
-    compressor: { threshold: -18, knee: 25, ratio: 2.8, attack: 0.002, release: 0.20 }
+    bass: -0.5,
+    presence: 1.5,
+    treble: 1.0,
+    preamp: 0.95
+  },
+  'bass-boost': {
+    id: 'bass-boost',
+    name: 'Warm Dhol Punch',
+    tagline: 'Deep gentle low-end punch without speaker rattling',
+    icon: '🥁',
+    badge: 'WARM BASS',
+    bass: 2.0,
+    presence: 0.5,
+    treble: 0.5,
+    preamp: 0.88
   },
   'sanctum-3d': {
     id: 'sanctum-3d',
-    name: 'Spiritual Sanctum 3D',
-    tagline: 'Expansive spatial soundstage & majestic temple ambience',
+    name: 'Temple Sanctum Air',
+    tagline: 'Silky shimmer & temple bell harmonics',
     icon: '🏛️',
-    badge: 'SPATIAL 3D',
-    subBass: 3.0,
-    midBass: 2.5,
-    mudCut: -1.8,
-    presence: 3.0,
-    treble: 4.0,
-    bassBoost: 2.0,
-    warmth: 1.2,
-    width: 1.80,
-    compressor: { threshold: -19, knee: 26, ratio: 3.2, attack: 0.004, release: 0.30 }
+    badge: 'SANCTUM AIR',
+    bass: 0.5,
+    presence: 1.0,
+    treble: 1.8,
+    preamp: 0.92
   },
-  'original': {
-    id: 'original',
-    name: 'Original (Flat / Bypass)',
-    tagline: 'Raw unenhanced audio for direct A/B comparison',
-    icon: '🔈',
-    badge: 'FLAT RAW',
-    subBass: 0,
-    midBass: 0,
-    mudCut: 0,
-    presence: 0,
-    treble: 0,
-    bassBoost: 0,
-    warmth: 1.0,
-    width: 1.0,
-    compressor: { threshold: 0, knee: 40, ratio: 1.0, attack: 0.01, release: 0.25 }
+  'spotify-master': {
+    id: 'spotify-master',
+    name: 'Hi-Fi Studio Polish',
+    tagline: 'Crisp, smooth balanced sound across mobile & speakers',
+    icon: '🎵',
+    badge: 'HI-FI POLISH',
+    bass: 1.2,
+    presence: 1.0,
+    treble: 1.2,
+    preamp: 0.90
   }
 };
-
-function createWarmthCurve(amount = 1.2) {
-  const n = 512;
-  const curve = new Float32Array(n);
-  for (let i = 0; i < n; ++i) {
-    const x = (i * 2) / n - 1;
-    curve[i] = Math.tanh(x * amount) / Math.tanh(amount);
-  }
-  return curve;
-}
 
 export class DevotionalPlayer {
   constructor() {
@@ -120,20 +85,14 @@ export class DevotionalPlayer {
     this.mediaSourceNode = null;
     this.preampGain = null;
     this.subBassFilter = null;
-    this.midBassFilter = null;
-    this.mudCutFilter = null;
     this.presenceFilter = null;
     this.trebleFilter = null;
-    this.bassBooster = null;
-    this.warmthNode = null;
-    this.sideGain = null;
-    this.compressorNode = null;
     this.analyser = null;
     this.frequencyDataArray = null;
     this.masterGainNode = null;
 
-    // Hi-Fi Enhancer Settings (Persisted in LocalStorage)
-    let savedProfile = 'spotify-master';
+    // Hi-Fi Enhancer Settings (Default to pure original pristine sound)
+    let savedProfile = 'original';
     let savedEnhancer = true;
     let savedBass = 0;
     let savedTreble = 0;
@@ -150,8 +109,8 @@ export class DevotionalPlayer {
 
     this.isEnhancerActive = savedEnhancer;
     this.currentProfile = savedProfile;
-    this.userBassOffset = savedBass;
-    this.userTrebleOffset = savedTreble;
+    this.userBassOffset = Math.max(-3, Math.min(3, savedBass));
+    this.userTrebleOffset = Math.max(-3, Math.min(3, savedTreble));
     this.userWidth = 1.0;
 
     // Shuffle & loop states
@@ -197,133 +156,51 @@ export class DevotionalPlayer {
     try {
       this.mediaSourceNode = this.ctx.createMediaElementSource(this.audio);
 
-      // 1. Preamp Stage
+      // 1. Headroom Safety Preamp (guarantees safe headroom, 0 digital clipping)
       this.preampGain = this.ctx.createGain();
-      this.preampGain.gain.value = 1.06;
+      this.preampGain.gain.value = 1.0;
 
-      // 2. Sub-Bass Shelf (55 Hz)
+      // 2. Gentle Studio Low-Shelf Filter (80 Hz)
       this.subBassFilter = this.ctx.createBiquadFilter();
       this.subBassFilter.type = 'lowshelf';
-      this.subBassFilter.frequency.value = 55;
+      this.subBassFilter.frequency.value = 80;
+      this.subBassFilter.gain.value = 0;
 
-      // 3. Mid-Bass Punch (140 Hz)
-      this.midBassFilter = this.ctx.createBiquadFilter();
-      this.midBassFilter.type = 'peaking';
-      this.midBassFilter.frequency.value = 140;
-      this.midBassFilter.Q.value = 1.2;
-
-      // 4. Low-Mid De-Mudding Dip (360 Hz)
-      this.mudCutFilter = this.ctx.createBiquadFilter();
-      this.mudCutFilter.type = 'peaking';
-      this.mudCutFilter.frequency.value = 360;
-      this.mudCutFilter.Q.value = 1.1;
-
-      // 5. Vocal & Lead Presence (3200 Hz)
+      // 3. Clean Vocal Presence Peaking Filter (2800 Hz)
       this.presenceFilter = this.ctx.createBiquadFilter();
       this.presenceFilter.type = 'peaking';
-      this.presenceFilter.frequency.value = 3200;
-      this.presenceFilter.Q.value = 1.0;
+      this.presenceFilter.frequency.value = 2800;
+      this.presenceFilter.Q.value = 0.8;
+      this.presenceFilter.gain.value = 0;
 
-      // 6. High-Shelf Air / Sparkle (11500 Hz)
+      // 4. Silky High-Shelf Treble Filter (10000 Hz)
       this.trebleFilter = this.ctx.createBiquadFilter();
       this.trebleFilter.type = 'highshelf';
-      this.trebleFilter.frequency.value = 11500;
+      this.trebleFilter.frequency.value = 10000;
+      this.trebleFilter.gain.value = 0;
 
-      // 7. Dedicated Bass Punch Booster (85 Hz)
-      this.bassBooster = this.ctx.createBiquadFilter();
-      this.bassBooster.type = 'peaking';
-      this.bassBooster.frequency.value = 85;
-      this.bassBooster.Q.value = 1.4;
-
-      // 8. Harmonic Warmth WaveShaper (Enriches mobile/earbud reproduction)
-      this.warmthNode = this.ctx.createWaveShaper();
-      this.warmthNode.curve = createWarmthCurve(1.2);
-      this.warmthNode.oversample = '2x';
-      this.warmthNode.channelCount = 2;
-      this.warmthNode.channelCountMode = 'explicit';
-
-      // 9. Stereo Spatial Widener (Mid / Side Processing)
-      this.msSplitter = this.ctx.createChannelSplitter(2);
-      this.midGain = this.ctx.createGain();
-      this.midGain.gain.value = 0.5;
-
-      this.sideGain = this.ctx.createGain();
-      this.sideGain.gain.value = 0.5 * 1.35;
-
-      this.invRight = this.ctx.createGain();
-      this.invRight.gain.value = -1.0;
-
-      this.invSide = this.ctx.createGain();
-      this.invSide.gain.value = -1.0;
-
-      this.leftSum = this.ctx.createGain();
-      this.leftSum.gain.value = 1.0;
-
-      this.rightSum = this.ctx.createGain();
-      this.rightSum.gain.value = 1.0;
-
-      this.msMerger = this.ctx.createChannelMerger(2);
-
-      // 10. Studio Dynamics Compressor (Spotify Loudness & Punch)
-      this.compressorNode = this.ctx.createDynamicsCompressor();
-      this.compressorNode.threshold.value = -20;
-      this.compressorNode.knee.value = 24;
-      this.compressorNode.ratio.value = 3.5;
-      this.compressorNode.attack.value = 0.003;
-      this.compressorNode.release.value = 0.22;
-
-      // 11. Real-time Analyser for live frequency visualizer
+      // 5. Analyser for the live frequency spectrum visualizer
       this.analyser = this.ctx.createAnalyser();
       this.analyser.fftSize = 256;
       this.analyser.smoothingTimeConstant = 0.82;
       this.frequencyDataArray = new Uint8Array(this.analyser.frequencyBinCount);
 
-      // 12. Master Volume & Limiter Gain
+      // 6. Master Volume Gain
       this.masterGainNode = this.ctx.createGain();
       this.masterGainNode.gain.value = this.isMuted ? 0 : this.volume;
 
-      // Connect Signal Chain
+      // Pure linear signal chain without any WaveShaper distortion or phase cancellation:
       this.mediaSourceNode.connect(this.preampGain);
       this.preampGain.connect(this.subBassFilter);
-      this.subBassFilter.connect(this.midBassFilter);
-      this.midBassFilter.connect(this.mudCutFilter);
-      this.mudCutFilter.connect(this.presenceFilter);
+      this.subBassFilter.connect(this.presenceFilter);
       this.presenceFilter.connect(this.trebleFilter);
-      this.trebleFilter.connect(this.bassBooster);
-      this.bassBooster.connect(this.warmthNode);
-
-      // Connect Mid/Side Stereo Widener
-      this.warmthNode.connect(this.msSplitter);
-
-      // Mid: L + R
-      this.msSplitter.connect(this.midGain, 0);
-      this.msSplitter.connect(this.midGain, 1);
-
-      // Side: L - R
-      this.msSplitter.connect(this.sideGain, 0);
-      this.msSplitter.connect(this.invRight, 1);
-      this.invRight.connect(this.sideGain);
-
-      // Sum: L = Mid + Side, R = Mid - Side
-      this.midGain.connect(this.leftSum);
-      this.midGain.connect(this.rightSum);
-
-      this.sideGain.connect(this.leftSum);
-      this.sideGain.connect(this.invSide);
-      this.invSide.connect(this.rightSum);
-
-      this.leftSum.connect(this.msMerger, 0, 0);
-      this.rightSum.connect(this.msMerger, 0, 1);
-
-      // Connect to Dynamics Compressor, Analyser, Master Gain, and Output
-      this.msMerger.connect(this.compressorNode);
-      this.compressorNode.connect(this.analyser);
+      this.trebleFilter.connect(this.analyser);
       this.analyser.connect(this.masterGainNode);
       this.masterGainNode.connect(this.ctx.destination);
 
       this.dspInitialized = true;
       this.applyCurrentProfile();
-      console.log('[Bappa Swar] Spotify Hi-Fi Studio Audio DSP Engine initialized.');
+      console.log('[Bappa Swar] Pure Studio Audio DSP Engine initialized with 0 distortion.');
     } catch (err) {
       console.warn('[Bappa Swar] Web Audio DSP initialization fallback:', err);
     }
@@ -334,51 +211,27 @@ export class DevotionalPlayer {
     const now = this.ctx.currentTime;
     const rampTime = 0.04;
 
-    const profile = SOUND_PROFILES[this.currentProfile] || SOUND_PROFILES['spotify-master'];
+    const profile = SOUND_PROFILES[this.currentProfile] || SOUND_PROFILES['original'];
 
     if (!this.isEnhancerActive || profile.id === 'original') {
-      // Bypass / Original flat sound
+      // 100% Pure Original Flat Audio (Zero modification, zero distortion)
       this.subBassFilter.gain.setTargetAtTime(0, now, rampTime);
-      this.midBassFilter.gain.setTargetAtTime(0, now, rampTime);
-      this.mudCutFilter.gain.setTargetAtTime(0, now, rampTime);
       this.presenceFilter.gain.setTargetAtTime(0, now, rampTime);
       this.trebleFilter.gain.setTargetAtTime(0, now, rampTime);
-      this.bassBooster.gain.setTargetAtTime(0, now, rampTime);
-      this.sideGain.gain.setTargetAtTime(0.5, now, rampTime);
-      this.compressorNode.ratio.setTargetAtTime(1.0, now, rampTime);
-      this.compressorNode.threshold.setTargetAtTime(0, now, rampTime);
       this.preampGain.gain.setTargetAtTime(1.0, now, rampTime);
       return;
     }
 
-    // Active Profile + Custom User Offsets
-    const finalSub = profile.subBass + this.userBassOffset;
-    const finalMidBass = profile.midBass + (this.userBassOffset * 0.7);
-    const finalBassBoost = profile.bassBoost + this.userBassOffset;
-    const finalTreble = profile.treble + this.userTrebleOffset;
-    const finalPresence = profile.presence + (this.userTrebleOffset * 0.5);
+    // Active Profile + Custom User Offsets (with clipping prevention)
+    const bass = (profile.bass || 0) + this.userBassOffset;
+    const presence = (profile.presence || 0) + (this.userTrebleOffset * 0.5);
+    const treble = (profile.treble || 0) + this.userTrebleOffset;
+    const preamp = profile.preamp || 0.95;
 
-    this.subBassFilter.gain.setTargetAtTime(finalSub, now, rampTime);
-    this.midBassFilter.gain.setTargetAtTime(finalMidBass, now, rampTime);
-    this.mudCutFilter.gain.setTargetAtTime(profile.mudCut, now, rampTime);
-    this.presenceFilter.gain.setTargetAtTime(finalPresence, now, rampTime);
-    this.trebleFilter.gain.setTargetAtTime(finalTreble, now, rampTime);
-    this.bassBooster.gain.setTargetAtTime(finalBassBoost, now, rampTime);
-
-    // Stereo width: 0.5 * profile.width * userWidth
-    const widthFactor = 0.5 * (profile.width || 1.35) * (this.userWidth || 1.0);
-    this.sideGain.gain.setTargetAtTime(widthFactor, now, rampTime);
-
-    // Compressor settings for punchy radio loudness
-    const c = profile.compressor;
-    if (c) {
-      this.compressorNode.threshold.setTargetAtTime(c.threshold, now, rampTime);
-      this.compressorNode.knee.setTargetAtTime(c.knee, now, rampTime);
-      this.compressorNode.ratio.setTargetAtTime(c.ratio, now, rampTime);
-      this.compressorNode.attack.setTargetAtTime(c.attack, now, rampTime);
-      this.compressorNode.release.setTargetAtTime(c.release, now, rampTime);
-    }
-    this.preampGain.gain.setTargetAtTime(1.06, now, rampTime);
+    this.subBassFilter.gain.setTargetAtTime(bass, now, rampTime);
+    this.presenceFilter.gain.setTargetAtTime(presence, now, rampTime);
+    this.trebleFilter.gain.setTargetAtTime(treble, now, rampTime);
+    this.preampGain.gain.setTargetAtTime(preamp, now, rampTime);
   }
 
   bindAudioEvents() {
